@@ -22,7 +22,9 @@ use Carbon\Carbon;
 use Carbon\CarbonPeriod;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
+use InvalidArgumentException;
 
 class CalendarController extends Controller
 {
@@ -72,7 +74,7 @@ class CalendarController extends Controller
             $priceMatrix[$rp->rate_plan_id][$rp->stay_date->toDateString()] = $rp;
         }
 
-        // Load sync state dots [room_type_id][stay_date][channel_code] => bool isSynced
+        // Load sync state dots [kind][subject_id][stay_date][channel_code] => 'synced'|'pending'|'blocked'
         $syncStates = ChannelSyncState::with('channel')
             ->whereIn('stay_date', $dateStrings)
             ->get();
@@ -80,7 +82,24 @@ class CalendarController extends Controller
         $syncMatrix = [];
         foreach ($syncStates as $ss) {
             $channelCode = $ss->channel ? $ss->channel->code : 'ch';
-            $syncMatrix[$ss->kind->value][$ss->subject_id][$ss->stay_date->toDateString()][$channelCode] = ($ss->blocked_at === null);
+            $dateStr = $ss->stay_date->toDateString();
+
+            if ($ss->blocked_at !== null) {
+                $status = 'blocked';
+            } else {
+                $currentVersion = 0;
+                if ($ss->kind->value === 'availability') {
+                    $inv = $inventoryMatrix[$ss->subject_id][$dateStr] ?? null;
+                    $currentVersion = $inv ? (int) $inv->version : 0;
+                } else {
+                    $rp = $priceMatrix[$ss->subject_id][$dateStr] ?? null;
+                    $currentVersion = $rp ? (int) $rp->version : 0;
+                }
+
+                $status = ($currentVersion > (int) $ss->pushed_version) ? 'pending' : 'synced';
+            }
+
+            $syncMatrix[$ss->kind->value][$ss->subject_id][$dateStr][$channelCode] = $status;
         }
 
         // Channels health
@@ -137,7 +156,11 @@ class CalendarController extends Controller
         if ($validated['field'] === 'capacity') {
             $roomTypeId = (int) $validated['room_type_id'];
             $capacity = (int) $validated['value'];
-            $this->inventoryService->setCapacity($roomTypeId, [$stayDate], $capacity);
+            try {
+                $this->inventoryService->setCapacity($roomTypeId, [$stayDate], $capacity);
+            } catch (InvalidArgumentException $e) {
+                return response()->json(['message' => $e->getMessage()], 422);
+            }
         } elseif ($validated['field'] === 'stop_sell') {
             $roomTypeId = (int) $validated['room_type_id'];
             $stopSell = filter_var($validated['value'], FILTER_VALIDATE_BOOLEAN);
@@ -173,7 +196,11 @@ class CalendarController extends Controller
 
         if ($validated['action'] === 'set_capacity') {
             $roomTypeId = (int) $validated['room_type_id'];
-            $this->inventoryService->setCapacity($roomTypeId, $dates, (int) $validated['value']);
+            try {
+                $this->inventoryService->setCapacity($roomTypeId, $dates, (int) $validated['value']);
+            } catch (InvalidArgumentException $e) {
+                return response()->json(['message' => $e->getMessage()], 422);
+            }
         } elseif ($validated['action'] === 'set_stop_sell') {
             $roomTypeId = (int) $validated['room_type_id'];
             $this->inventoryService->setStopSell($roomTypeId, $dates, filter_var($validated['value'], FILTER_VALIDATE_BOOLEAN));
@@ -187,11 +214,36 @@ class CalendarController extends Controller
 
     public function syncStatus(Request $request): JsonResponse
     {
+        $hotel = Hotel::first();
+        $timezone = $hotel ? $hotel->timezone : 'Asia/Kolkata';
+        $today = now()->timezone($timezone)->toDateString();
+
         $channels = Channel::all();
-        $dirtyCount = ChannelSyncState::whereNull('blocked_at')
-            ->where('pushed_version', '<', 1)
+
+        // Level-triggered dirty count: version > pushed_version for availability and rates
+        $dirtyAvail = DB::table('channel_sync_state as s')
+            ->join('room_inventory as ri', function ($j) {
+                $j->on('ri.room_type_id', '=', 's.subject_id')
+                  ->on('ri.stay_date', '=', 's.stay_date');
+            })
+            ->where('s.kind', 'availability')
+            ->whereNull('s.blocked_at')
+            ->whereRaw('ri.version > s.pushed_version')
+            ->where('s.stay_date', '>=', $today)
             ->count();
 
+        $dirtyRates = DB::table('channel_sync_state as s')
+            ->join('rate_prices as rp', function ($j) {
+                $j->on('rp.rate_plan_id', '=', 's.subject_id')
+                  ->on('rp.stay_date', '=', 's.stay_date');
+            })
+            ->where('s.kind', 'rate')
+            ->whereNull('s.blocked_at')
+            ->whereRaw('rp.version > s.pushed_version')
+            ->where('s.stay_date', '>=', $today)
+            ->count();
+
+        $dirtyCount = $dirtyAvail + $dirtyRates;
         $blockedCount = ChannelSyncState::whereNotNull('blocked_at')->count();
         $openAlertsCount = Alert::whereNull('resolved_at')->count();
 

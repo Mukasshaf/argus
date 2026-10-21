@@ -52,15 +52,25 @@ class ChannelController extends Controller
             ];
         }
 
+        $roomTypes = \App\Models\RoomType::with(['ratePlans', 'mappings.channel'])->get();
+
         return view('extranet.channels', [
             'hotel' => $hotel,
             'channels' => $channels,
+            'roomTypes' => $roomTypes,
             'activeChannelsCount' => $activeChannelsCount,
             'totalMappingsCount' => $totalMappingsCount,
             'expectedMappingsCount' => $expectedMappingsCount,
             'lastSuccessAt' => $lastSuccessAt,
             'mtdStats' => $mtdStats,
         ]);
+    }
+
+    public function syncAll(): RedirectResponse
+    {
+        SyncKick::allChannels();
+
+        return back()->with('success', 'Triggered full synchronization for all active channels.');
     }
 
     public function forceSync(int $id): RedirectResponse

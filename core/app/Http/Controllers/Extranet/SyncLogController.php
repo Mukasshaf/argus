@@ -9,9 +9,12 @@ use App\Http\Controllers\Controller;
 use App\Models\Channel;
 use App\Models\Hotel;
 use App\Models\SyncLog;
+use App\Services\SyncKick;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class SyncLogController extends Controller
 {
@@ -22,8 +25,20 @@ class SyncLogController extends Controller
         $outcome = $request->query('outcome');
         $direction = $request->query('direction');
         $correlationId = $request->query('correlation_id');
+        $activeTab = $request->query('tab', 'all');
 
         $query = SyncLog::with('channel')->orderBy('created_at', 'desc');
+
+        // Apply Tab Filter
+        if ($activeTab === 'attention') {
+            $query->whereIn('outcome', [SyncOutcome::TransientFail, SyncOutcome::PermanentFail]);
+        } elseif ($activeTab === 'reservations') {
+            $query->where(fn($q) => $q->where('operation', 'like', '%reservation%')->orWhere('direction', 'in'));
+        } elseif ($activeTab === 'availability_rates') {
+            $query->where(fn($q) => $q->where('operation', 'like', '%avail%')->orWhere('operation', 'like', '%rate%')->orWhere('operation', 'like', '%inv%'));
+        } elseif ($activeTab === 'stopsell') {
+            $query->where('operation', 'like', '%stop%');
+        }
 
         if ($channelId) {
             $query->where('channel_id', $channelId);
@@ -38,7 +53,7 @@ class SyncLogController extends Controller
             $query->where('correlation_id', 'like', "%{$correlationId}%");
         }
 
-        $logs = $query->paginate(20);
+        $logs = $query->paginate(20)->withQueryString();
 
         // Stats
         $totalLogs = SyncLog::count();
@@ -46,6 +61,15 @@ class SyncLogController extends Controller
         $failLogs = SyncLog::whereIn('outcome', [SyncOutcome::TransientFail, SyncOutcome::PermanentFail])->count();
         $successRate = $totalLogs > 0 ? round(($okLogs / $totalLogs) * 100, 1) : 100.0;
         $avgDuration = round(SyncLog::avg('duration_ms') ?? 0);
+
+        // Tab counts
+        $tabCounts = [
+            'all' => $totalLogs,
+            'attention' => $failLogs,
+            'reservations' => SyncLog::where(fn($q) => $q->where('operation', 'like', '%reservation%')->orWhere('direction', 'in'))->count(),
+            'availability_rates' => SyncLog::where(fn($q) => $q->where('operation', 'like', '%avail%')->orWhere('operation', 'like', '%rate%')->orWhere('operation', 'like', '%inv%'))->count(),
+            'stopsell' => SyncLog::where('operation', 'like', '%stop%')->count(),
+        ];
 
         $channels = Channel::all();
 
@@ -57,10 +81,53 @@ class SyncLogController extends Controller
             'outcome' => $outcome,
             'direction' => $direction,
             'correlationId' => $correlationId,
+            'activeTab' => $activeTab,
+            'tabCounts' => $tabCounts,
             'totalLogs' => $totalLogs,
             'successRate' => $successRate,
             'failLogs' => $failLogs,
             'avgDuration' => $avgDuration,
+        ]);
+    }
+
+    public function triggerCheck(): RedirectResponse
+    {
+        SyncKick::allChannels();
+
+        return back()->with('success', 'Triggered live synchronization check across all active channel adapters.');
+    }
+
+    public function exportCsv(): StreamedResponse
+    {
+        $fileName = 'sync_audit_' . now()->format('Y-m-d_His') . '.csv';
+
+        return response()->streamDownload(function () {
+            $handle = fopen('php://output', 'w');
+            fputcsv($handle, ['ID', 'Timestamp (UTC)', 'Correlation ID', 'Channel', 'Direction', 'Operation', 'Status Code', 'Duration (ms)', 'Attempt', 'Outcome', 'Error']);
+
+            SyncLog::with('channel')
+                ->orderBy('created_at', 'desc')
+                ->chunk(500, function ($logs) use ($handle) {
+                    foreach ($logs as $l) {
+                        fputcsv($handle, [
+                            $l->id,
+                            $l->created_at?->toIso8601String(),
+                            $l->correlation_id,
+                            $l->channel?->name ?? 'N/A',
+                            $l->direction->value,
+                            $l->operation,
+                            $l->response_status ?? '',
+                            $l->duration_ms,
+                            $l->attempt,
+                            $l->outcome->value,
+                            $l->error ?? '',
+                        ]);
+                    }
+                });
+
+            fclose($handle);
+        }, $fileName, [
+            'Content-Type' => 'text/csv',
         ]);
     }
 

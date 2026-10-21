@@ -55,6 +55,16 @@
             </div>
 
             <div class="flex items-center gap-2">
+                <div class="relative">
+                    <select id="filterRoomsSelect" onchange="filterRooms(this.value)" class="h-8 pl-2.5 pr-7 bg-surface hover:bg-surface-container text-on-surface text-xs rounded-lg border border-border shadow-sm appearance-none cursor-pointer focus:outline-none font-medium">
+                        <option value="all">Filter Rooms: All ({{ $roomTypes->count() }})</option>
+                        @foreach($roomTypes as $r)
+                            <option value="{{ $r->code }}">{{ $r->name }} ({{ $r->code }})</option>
+                        @endforeach
+                    </select>
+                    <span class="material-symbols-outlined absolute right-1.5 top-1/2 -translate-y-1/2 text-secondary text-xs pointer-events-none">expand_more</span>
+                </div>
+
                 <button type="button" onclick="$('#bulkEditModal').removeClass('hidden')"
                         class="h-8 px-4 bg-tertiary-container hover:bg-primary text-on-primary font-semibold text-xs rounded-lg shadow-sm flex items-center gap-1.5 transition-colors shrink-0">
                     <span class="material-symbols-outlined text-base">edit_calendar</span>
@@ -153,20 +163,31 @@
                     {{ $startDate->format('M d') }} – {{ $endDate->format('M d, Y') }}
                 </span>
             </div>
-            <div class="flex items-center gap-2">
-                <span class="text-xs text-secondary">Quick Jump:</span>
-                <a href="{{ route('calendar', ['start_date' => $today->toDateString()]) }}"
-                   class="px-2 py-0.5 rounded text-xs {{ $startDate->isSameDay($today) ? 'bg-tertiary-container text-on-primary font-semibold' : 'text-secondary hover:text-primary hover:bg-surface' }}">
-                    Today
-                </a>
-                <a href="{{ route('calendar', ['start_date' => $today->copy()->addDays(10)->toDateString()]) }}"
-                   class="px-2 py-0.5 rounded text-xs text-secondary hover:text-primary hover:bg-surface transition-colors">
-                    +10 Days
-                </a>
-                <a href="{{ route('calendar', ['start_date' => $today->copy()->addDays(20)->toDateString()]) }}"
-                   class="px-2 py-0.5 rounded text-xs text-secondary hover:text-primary hover:bg-surface transition-colors">
-                    +20 Days
-                </a>
+            <div class="flex items-center gap-4">
+                <div class="flex items-center gap-1.5">
+                    <label for="roomFilterSelect" class="text-xs text-secondary font-medium">Filter Rooms:</label>
+                    <select id="roomFilterSelect" onchange="filterRooms(this.value)" class="text-xs bg-surface border border-border rounded px-2 py-0.5 text-primary focus:outline-none focus:ring-1 focus:ring-tertiary-container">
+                        <option value="all">All Room Types</option>
+                        @foreach($roomTypes as $room)
+                            <option value="{{ $room->code }}">{{ $room->name }} ({{ $room->code }})</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="flex items-center gap-2">
+                    <span class="text-xs text-secondary">Quick Jump:</span>
+                    <a href="{{ route('calendar', ['start_date' => $today->toDateString()]) }}"
+                       class="px-2 py-0.5 rounded text-xs {{ $startDate->isSameDay($today) ? 'bg-tertiary-container text-on-primary font-semibold' : 'text-secondary hover:text-primary hover:bg-surface' }}">
+                        Today
+                    </a>
+                    <a href="{{ route('calendar', ['start_date' => $today->copy()->addDays(10)->toDateString()]) }}"
+                       class="px-2 py-0.5 rounded text-xs text-secondary hover:text-primary hover:bg-surface transition-colors">
+                        +10 Days
+                    </a>
+                    <a href="{{ route('calendar', ['start_date' => $today->copy()->addDays(20)->toDateString()]) }}"
+                       class="px-2 py-0.5 rounded text-xs text-secondary hover:text-primary hover:bg-surface transition-colors">
+                        +20 Days
+                    </a>
+                </div>
             </div>
         </div>
 
@@ -202,7 +223,7 @@
                 <tbody>
                     @foreach($roomTypes as $room)
                         <!-- Group Header: Room Type -->
-                        <tr class="bg-surface-container-low border-y border-border">
+                        <tr data-room-row="{{ $room->code }}" class="bg-surface-container-low border-y border-border">
                             <td class="sticky left-0 z-30 bg-surface-container-low px-4 py-2 border-r-2 border-border shadow-[4px_0_8px_-2px_rgba(0,0,0,0.06)]">
                                 <div class="flex items-center gap-2">
                                     <span class="w-2.5 h-2.5 rounded-full bg-tertiary-container shrink-0"></span>
@@ -219,7 +240,7 @@
                         </tr>
 
                         <!-- Row 1: Available to Sell -->
-                        <tr class="border-b border-border hover:bg-surface-container-low transition-colors">
+                        <tr data-room-row="{{ $room->code }}" class="border-b border-border hover:bg-surface-container-low transition-colors">
                             <td class="sticky left-0 z-20 bg-surface px-4 py-2 text-xs text-on-surface border-r-2 border-border shadow-[4px_0_8px_-2px_rgba(0,0,0,0.06)] flex items-center justify-between">
                                 <span class="font-semibold text-tertiary-container">Available to Sell</span>
                                 <span class="text-[11px] text-secondary">Units</span>
@@ -245,7 +266,7 @@
                         </tr>
 
                         <!-- Row 2: Booked (Occupied) / Capacity with Inline Edit -->
-                        <tr class="border-b border-border hover:bg-surface-container-low transition-colors">
+                        <tr data-room-row="{{ $room->code }}" class="border-b border-border hover:bg-surface-container-low transition-colors">
                             <td class="sticky left-0 z-20 bg-surface px-4 py-2 text-xs text-secondary border-r-2 border-border shadow-[4px_0_8px_-2px_rgba(0,0,0,0.06)] flex items-center justify-between">
                                 <span>Booked / Capacity</span>
                                 <span class="text-[10px] text-secondary">Click to edit cap</span>
@@ -271,7 +292,7 @@
 
                         <!-- Row 3 & 4: Rate Plans (EP & CP) -->
                         @foreach($room->ratePlans as $ratePlan)
-                            <tr class="border-b border-border hover:bg-surface-container-low transition-colors">
+                            <tr data-room-row="{{ $room->code }}" class="border-b border-border hover:bg-surface-container-low transition-colors">
                                 <td class="sticky left-0 z-20 bg-surface px-4 py-2 text-xs text-on-surface border-r-2 border-border shadow-[4px_0_8px_-2px_rgba(0,0,0,0.06)] flex items-center justify-between">
                                     <span class="flex items-center gap-1.5 truncate">
                                         <span class="w-1.5 h-1.5 rounded-full bg-secondary shrink-0"></span>
@@ -298,22 +319,31 @@
                         @endforeach
 
                         <!-- Row 5: Channels Sync Status (Raahi/Sarai/Mela) -->
-                        <tr class="border-b border-border bg-surface-container-lowest">
+                        <tr data-room-row="{{ $room->code }}" class="border-b border-border bg-surface-container-lowest">
                             <td class="sticky left-0 z-20 bg-surface px-4 py-1.5 text-[11px] text-secondary border-r-2 border-border shadow-[4px_0_8px_-2px_rgba(0,0,0,0.06)]">
                                 Channels (Raahi/Sarai/Mela)
                             </td>
                             @foreach($dates as $d)
                                 @php
                                     $dStr = $d->toDateString();
-                                    $raahiOk = $syncMatrix['availability'][$room->id][$dStr]['raahi'] ?? true;
-                                    $saraiOk = $syncMatrix['availability'][$room->id][$dStr]['sarai'] ?? true;
-                                    $melaOk = $syncMatrix['availability'][$room->id][$dStr]['mela'] ?? true;
+                                    $raahiState = $syncMatrix['availability'][$room->id][$dStr]['raahi'] ?? 'synced';
+                                    $saraiState = $syncMatrix['availability'][$room->id][$dStr]['sarai'] ?? 'synced';
+                                    $melaState  = $syncMatrix['availability'][$room->id][$dStr]['mela'] ?? 'synced';
+
+                                    $dotClass = function($state) {
+                                        return match($state) {
+                                            'synced' => 'bg-[#4C7168]',
+                                            'pending' => 'bg-warning',
+                                            'blocked' => 'bg-danger',
+                                            default => 'bg-[#4C7168]'
+                                        };
+                                    };
                                 @endphp
                                 <td class="text-center py-1.5 border-r border-border">
                                     <span class="inline-flex gap-1 items-center justify-center">
-                                        <span class="w-1.5 h-1.5 rounded-full {{ $raahiOk ? 'bg-[#4C7168]' : 'bg-danger' }}" title="Raahi {{ $raahiOk ? 'synced' : 'pending' }}"></span>
-                                        <span class="w-1.5 h-1.5 rounded-full {{ $saraiOk ? 'bg-[#4C7168]' : 'bg-danger' }}" title="Sarai {{ $saraiOk ? 'synced' : 'pending' }}"></span>
-                                        <span class="w-1.5 h-1.5 rounded-full {{ $melaOk ? 'bg-[#4C7168]' : 'bg-danger' }}" title="Mela {{ $melaOk ? 'synced' : 'pending' }}"></span>
+                                        <span class="w-1.5 h-1.5 rounded-full {{ $dotClass($raahiState) }}" title="Raahi: {{ $raahiState }}"></span>
+                                        <span class="w-1.5 h-1.5 rounded-full {{ $dotClass($saraiState) }}" title="Sarai: {{ $saraiState }}"></span>
+                                        <span class="w-1.5 h-1.5 rounded-full {{ $dotClass($melaState) }}" title="Mela: {{ $melaState }}"></span>
                                     </span>
                                 </td>
                             @endforeach
@@ -500,5 +530,20 @@
             });
         });
     });
+
+    window.filterRooms = function(code) {
+        if (!code || code === 'all') {
+            $('tr[data-room-row]').show();
+        } else {
+            $('tr[data-room-row]').each(function() {
+                const rowCode = $(this).attr('data-room-row');
+                if (rowCode === code) {
+                    $(this).show();
+                } else {
+                    $(this).hide();
+                }
+            });
+        }
+    };
 </script>
 @endpush

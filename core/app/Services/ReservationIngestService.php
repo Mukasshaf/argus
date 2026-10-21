@@ -26,11 +26,10 @@ class ReservationIngestService
 
     public function apply(ReservationEvent $e): IngestResult
     {
-        $touchedDatesForOversoldCheck = [];
-        $affectedRoomTypeId = 0;
+        $touchedByRoomType = [];
         $hotelId = 1;
 
-        $result = DB::transaction(function () use ($e, &$touchedDatesForOversoldCheck, &$affectedRoomTypeId, &$hotelId) {
+        $result = DB::transaction(function () use ($e, &$touchedByRoomType, &$hotelId) {
             $room = ChannelRoomMapping::resolve($e->channelId, $e->roomCode);
             $rate = ChannelRateMapping::resolve($e->channelId, $e->rateCode);
 
@@ -39,7 +38,6 @@ class ReservationIngestService
                 throw new UnmappedCodeException($e, "Unmapped room [{$e->roomCode}] or rate [{$e->rateCode}] code.");
             }
 
-            $affectedRoomTypeId = $room->room_type_id;
             $hotel = Hotel::first();
             if ($hotel) {
                 $hotelId = $hotel->id;
@@ -200,7 +198,15 @@ class ReservationIngestService
                             'updated_at' => now(),
                         ]);
                 }
-                $touchedDatesForOversoldCheck = array_merge($touchedDatesForOversoldCheck, $dates);
+                foreach ($dates as $d) {
+                    $touchedByRoomType[$rtId][$d] = true;
+                }
+            }
+
+            foreach ($released as $rtId => $dates) {
+                foreach ($dates as $d) {
+                    $touchedByRoomType[$rtId][$d] = true;
+                }
             }
 
             // 5. Update reservation record
@@ -241,20 +247,22 @@ class ReservationIngestService
             return IngestResult::Applied;
         }, 5);
 
-        // Outside transaction: check for oversold on taken dates, resolve if cured, trigger outbound sync
-        if ($result === IngestResult::Applied && $affectedRoomTypeId > 0) {
-            foreach ($touchedDatesForOversoldCheck as $d) {
-                $inv = DB::table('room_inventory')
-                    ->where('room_type_id', $affectedRoomTypeId)
-                    ->where('stay_date', $d)
-                    ->first();
+        // Outside transaction: check for oversold or auto-resolve if cured, then trigger outbound sync
+        if ($result === IngestResult::Applied && !empty($touchedByRoomType)) {
+            foreach ($touchedByRoomType as $rtId => $datesMap) {
+                foreach (array_keys($datesMap) as $d) {
+                    $inv = DB::table('room_inventory')
+                        ->where('room_type_id', (int) $rtId)
+                        ->where('stay_date', (string) $d)
+                        ->first();
 
-                if ($inv) {
-                    $available = (int) $inv->capacity - (int) $inv->booked;
-                    if ($available < 0) {
-                        Alert::oversold($hotelId, $affectedRoomTypeId, $d, $available);
-                    } else {
-                        Alert::resolveOversoldIfCured($affectedRoomTypeId, $d);
+                    if ($inv) {
+                        $available = (int) $inv->capacity - (int) $inv->booked;
+                        if ($available < 0) {
+                            Alert::oversold($hotelId, (int) $rtId, (string) $d, $available);
+                        } else {
+                            Alert::resolveOversoldIfCured((int) $rtId, (string) $d);
+                        }
                     }
                 }
             }

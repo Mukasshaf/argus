@@ -185,6 +185,19 @@ class RealtimeBookingService
                 'status' => 409,
                 'data' => ['status' => 'rejected', 'reason' => 'sold_out'],
             ];
+        } catch (\Illuminate\Database\UniqueConstraintViolationException|\Illuminate\Database\QueryException $e) {
+            $existing = Reservation::where('channel_id', $evt->channelId)
+                ->where('external_id', $evt->externalId)
+                ->first();
+
+            if ($existing) {
+                return [
+                    'status' => 201,
+                    'data' => ['status' => 'confirmed'],
+                ];
+            }
+
+            throw $e;
         }
     }
 }

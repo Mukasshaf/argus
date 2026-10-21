@@ -19,7 +19,7 @@ Route::get('/compare/{hotel}', [CompareController::class, 'index'])->name('compa
 
 
 // Extranet Protected Routes
-Route::middleware(['web', 'auth'])->group(function () {
+Route::middleware(['auth'])->group(function () {
     Route::get('/', fn() => redirect()->route('calendar'));
 
     // Calendar
@@ -30,16 +30,21 @@ Route::middleware(['web', 'auth'])->group(function () {
 
     // Reservations
     Route::get('/extranet/reservations', [ReservationController::class, 'index'])->name('reservations');
+    Route::get('/extranet/reservations/export', [ReservationController::class, 'exportCsv'])->name('reservations.export');
+    Route::post('/extranet/reservations/manual', [ReservationController::class, 'manualBooking'])->name('reservations.manual');
     Route::post('/extranet/reservations/reprocess/{id}', [ReservationController::class, 'reprocessEvent'])->name('reservations.reprocess');
 
     // Channels
     Route::get('/extranet/channels', [ChannelController::class, 'index'])->name('channels');
+    Route::post('/extranet/channels/sync-all', [ChannelController::class, 'syncAll'])->name('channels.sync-all');
     Route::post('/extranet/channels/{id}/force-sync', [ChannelController::class, 'forceSync'])->name('channels.force-sync');
     Route::post('/extranet/channels/{id}/toggle-pause', [ChannelController::class, 'togglePause'])->name('channels.toggle-pause');
     Route::post('/extranet/channels/{id}/unblock', [ChannelController::class, 'unblock'])->name('channels.unblock');
 
     // Sync Logs
     Route::get('/extranet/sync-logs', [SyncLogController::class, 'index'])->name('sync-logs');
+    Route::get('/extranet/sync-logs/export', [SyncLogController::class, 'exportCsv'])->name('sync-logs.export');
+    Route::post('/extranet/sync-logs/trigger-check', [SyncLogController::class, 'triggerCheck'])->name('sync-logs.trigger-check');
     Route::get('/extranet/sync-logs/{id}', [SyncLogController::class, 'show'])->name('sync-logs.show');
 
     // Alerts

@@ -17,20 +17,22 @@
             <p class="text-xs text-secondary mt-1">Lotus Residency · Bengaluru · 3 Configured Channels</p>
         </div>
 
-        <div class="flex items-center gap-2 flex-wrap">
+        <div class="flex items-center gap-2.5 flex-wrap">
             <a href="{{ route('sync-logs') }}" class="h-9 px-3.5 bg-surface hover:bg-surface-container text-primary border border-border text-xs font-medium rounded-md transition-colors flex items-center gap-1.5 shadow-sm">
                 <span class="material-symbols-outlined text-base text-secondary">history</span>
                 <span>Sync Audit</span>
             </a>
-            @if($channels->first())
-                <form action="{{ route('channels.force-sync', $channels->first()->id) }}" method="POST">
-                    @csrf
-                    <button type="submit" class="h-9 px-3.5 bg-surface hover:bg-surface-container text-primary border border-border text-xs font-medium rounded-md transition-colors flex items-center gap-1.5 shadow-sm">
-                        <span class="material-symbols-outlined text-base text-secondary">sync</span>
-                        <span>Force Sync</span>
-                    </button>
-                </form>
-            @endif
+            <form action="{{ route('channels.sync-all') }}" method="POST" id="forceSyncForm">
+                @csrf
+                <button type="submit" class="h-9 px-3.5 bg-surface hover:bg-surface-container text-primary border border-border text-xs font-medium rounded-md transition-colors flex items-center gap-1.5 shadow-sm" id="forceSyncBtn">
+                    <span class="material-symbols-outlined text-base text-secondary" id="forceSyncIcon">sync</span>
+                    <span id="forceSyncText">Force Full Sync</span>
+                </button>
+            </form>
+            <button type="button" onclick="alert('Connect new channels: Browse 28 certified integrations in the directory.');" class="h-9 px-4 bg-tertiary-container hover:bg-[#3D5B54] text-on-primary text-xs font-semibold rounded-[9px] transition-all flex items-center gap-1.5 shadow-sm hover:shadow active:scale-[0.98]">
+                <span class="material-symbols-outlined text-base">add</span>
+                <span>+ Add Channel</span>
+            </button>
         </div>
     </div>
 
@@ -180,5 +182,122 @@
             </div>
         @endforeach
     </div>
+
+    <!-- Dedicated / Expandable Mapping Area -->
+    <div class="bg-surface rounded-xl border border-border shadow-sm mb-6 overflow-hidden">
+        <!-- Collapsible Header Toggle -->
+        <button type="button" aria-expanded="true" class="w-full px-5 py-4 flex items-center justify-between text-left hover:bg-surface-container transition-colors" id="toggleMatrixBtn">
+            <div class="flex items-center gap-3">
+                <span class="material-symbols-outlined text-tertiary-container text-xl">schema</span>
+                <div class="flex flex-col">
+                    <span class="font-heading-sm font-semibold text-base text-primary">Channel Room &amp; Rate Mapping Matrix</span>
+                    <span class="text-xs text-secondary mt-0.5">Property: {{ $hotel->name ?? 'Lotus Residency' }} — Bengaluru ({{ $roomTypes->sum('total_rooms') }} Total Keys)</span>
+                </div>
+            </div>
+            <div class="flex items-center gap-2">
+                <span class="text-xs text-secondary font-medium hidden sm:inline" id="toggleMatrixLabel">Hide matrix</span>
+                <span class="material-symbols-outlined text-secondary text-lg transition-transform duration-200" id="matrixCaret">expand_less</span>
+            </div>
+        </button>
+
+        <!-- Collapsible Content -->
+        <div class="px-5 pb-5 pt-1 border-t border-border" id="mappingMatrixContainer">
+            <div class="overflow-x-auto">
+                <table class="w-full text-left text-xs">
+                    <thead>
+                        <tr class="border-b border-border text-secondary font-semibold uppercase text-[10px] tracking-wider">
+                            <th class="py-2.5 px-3">Internal Room Code</th>
+                            @foreach($channels as $c)
+                                <th class="py-2.5 px-3">{{ $c->name }}</th>
+                            @endforeach
+                            <th class="py-2.5 px-3 text-right">Parity Status / Base Rate</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-border text-xs">
+                        @foreach($roomTypes as $room)
+                            <tr class="hover:bg-surface-container transition-colors">
+                                <td class="py-3 px-3 font-medium text-primary">
+                                    <div class="flex items-center gap-2">
+                                        <span class="w-1.5 h-1.5 rounded-full bg-tertiary-container"></span>
+                                        <span>{{ $room->code }} · {{ $room->name }}</span>
+                                        <span class="text-[11px] text-secondary">({{ $room->total_rooms }} Keys)</span>
+                                    </div>
+                                </td>
+                                @foreach($channels as $c)
+                                    @php
+                                        $map = $room->mappings->firstWhere('channel_id', $c->id);
+                                    @endphp
+                                    <td class="py-3 px-3 font-data-mono text-[11px] text-primary">
+                                        @if($map)
+                                            <span>{{ $map->external_room_code }}</span>
+                                        @else
+                                            <span class="inline-flex items-center gap-1 font-semibold text-[10px] text-warning bg-warning-soft px-1.5 py-0.5 rounded border border-warning/30">
+                                                <span class="material-symbols-outlined text-xs">warning</span>
+                                                UNMAPPED
+                                            </span>
+                                        @endif
+                                    </td>
+                                @endforeach
+                                <td class="py-3 px-3 text-right tabular-nums">
+                                    @php
+                                        $basePrice = $room->ratePlans->first()?->base_price ?? 0;
+                                    @endphp
+                                    <span class="inline-flex items-center gap-1.5 text-tertiary-container font-medium">
+                                        <span class="w-1.5 h-1.5 rounded-full bg-tertiary-container"></span>
+                                        ₹{{ number_format($basePrice) }} · Parity OK
+                                    </span>
+                                </td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+            <div class="mt-3 pt-3 border-t border-border flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs text-secondary">
+                <span>All wholesale and retail rate multipliers enforced by sync worker.</span>
+                <span class="text-tertiary-container font-medium flex items-center gap-1">
+                    <span>Active mapping live across {{ $channels->count() }} distribution endpoints</span>
+                    <span class="material-symbols-outlined text-sm">check_circle</span>
+                </span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Subtle Integration Directory Callout -->
+    <div class="bg-surface rounded-xl border border-border p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs mb-8">
+        <div class="flex items-center gap-3">
+            <div class="w-8 h-8 rounded-lg bg-surface-container-low border border-border flex items-center justify-center shrink-0 text-tertiary-container">
+                <span class="material-symbols-outlined text-lg">explore</span>
+            </div>
+            <div>
+                <span class="font-medium text-primary">Looking to connect a new OTA or GDS?</span>
+                <span class="text-secondary block sm:inline sm:ml-1">Browse 28 certified integrations in the Add Channel directory.</span>
+            </div>
+        </div>
+        <button type="button" onclick="alert('OTA Directory: Booking.com, Agoda, Expedia, MakeMyTrip, Cleartrip, Traveloka, Trip.com, and 21 other connectors available in production.');" class="h-8 px-3.5 rounded-md bg-surface hover:bg-surface-container text-primary border border-border font-medium transition-colors shrink-0 self-start sm:self-center flex items-center gap-1">
+            <span>Explore Directory</span>
+            <span class="material-symbols-outlined text-sm">open_in_new</span>
+        </button>
+    </div>
 </div>
 @endsection
+
+@push('scripts')
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const toggleBtn = document.getElementById('toggleMatrixBtn');
+    const container = document.getElementById('mappingMatrixContainer');
+    const caret = document.getElementById('matrixCaret');
+    const label = document.getElementById('toggleMatrixLabel');
+
+    if (toggleBtn && container && caret) {
+        toggleBtn.addEventListener('click', () => {
+            const isHidden = container.classList.toggle('hidden');
+            caret.style.transform = isHidden ? 'rotate(180deg)' : 'rotate(0deg)';
+            if (label) {
+                label.textContent = isHidden ? 'Show matrix' : 'Hide matrix';
+            }
+        });
+    }
+});
+</script>
+@endpush

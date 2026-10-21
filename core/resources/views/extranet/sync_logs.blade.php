@@ -2,13 +2,33 @@
 
 @section('content')
 <div class="flex flex-col w-full max-w-7xl">
-    <!-- Header -->
-    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
-        <div>
+    <!-- Header & Action Hierarchy -->
+    <div class="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-5">
+        <div class="flex items-center gap-3">
             <h1 class="font-heading-md font-semibold text-2xl lg:text-3xl text-primary tracking-tight" style="font-family: 'Lora', 'Noto Serif', Georgia, serif;">
-                Channel Sync Logs
+                Sync Logs
             </h1>
-            <p class="text-xs text-secondary mt-1">Audit trail of outbound pushes, inbound webhooks, and channel polling</p>
+            <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-success-soft text-tertiary-container text-xs font-semibold border border-tertiary-container/20">
+                <span class="relative flex h-2 w-2">
+                    <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-tertiary-container opacity-75"></span>
+                    <span class="relative inline-flex rounded-full h-2 w-2 bg-tertiary-container"></span>
+                </span>
+                Live Stream
+            </span>
+        </div>
+
+        <div class="flex items-center gap-2.5">
+            <form action="{{ route('sync-logs.trigger-check') }}" method="POST">
+                @csrf
+                <button type="submit" class="h-9 px-3.5 bg-surface border border-border text-primary font-medium text-xs rounded-lg hover:bg-surface-container transition-colors flex items-center gap-1.5 shadow-sm">
+                    <span class="material-symbols-outlined text-base text-secondary">refresh</span>
+                    <span>Run Sync Check</span>
+                </button>
+            </form>
+            <a href="{{ route('sync-logs.export') }}" class="h-9 px-3.5 bg-surface border border-border text-primary font-medium text-xs rounded-lg hover:bg-surface-container transition-colors flex items-center gap-1.5 shadow-sm">
+                <span class="material-symbols-outlined text-base text-secondary">download</span>
+                <span>Export Audit Log</span>
+            </a>
         </div>
     </div>
 
@@ -21,7 +41,7 @@
                 </div>
                 <div class="flex flex-col min-w-0">
                     <span class="text-xs text-secondary uppercase font-semibold">Total Operations</span>
-                    <span class="text-base font-bold text-primary">{{ $totalLogs }}</span>
+                    <span class="text-base font-bold text-primary">{{ number_format($totalLogs) }}</span>
                 </div>
             </div>
 
@@ -57,55 +77,119 @@
         </div>
     </div>
 
-    <!-- Filters Bar -->
-    <div class="bg-surface rounded-xl border border-border p-3 mb-6 shadow-sm">
-        <form method="GET" action="{{ route('sync-logs') }}" class="flex flex-wrap items-center gap-3">
-            <div class="relative w-64">
-                <span class="material-symbols-outlined absolute left-2.5 top-1/2 -translate-y-1/2 text-secondary text-base">search</span>
-                <input type="text" name="correlation_id" value="{{ $correlationId }}" placeholder="Filter correlation ID..."
-                       class="h-8 pl-8 pr-3 bg-surface-container-low text-xs text-primary rounded border border-border focus:outline-none w-full">
-            </div>
-
-            <div class="relative">
-                <select name="channel_id" onchange="this.form.submit()" class="h-8 pl-3 pr-7 bg-surface-container-low text-xs text-primary rounded border border-border appearance-none cursor-pointer">
-                    <option value="">All Channels</option>
-                    @foreach($channels as $ch)
-                        <option value="{{ $ch->id }}" {{ $channelId == $ch->id ? 'selected' : '' }}>{{ $ch->name }}</option>
-                    @endforeach
-                </select>
-                <span class="material-symbols-outlined absolute right-1.5 top-1/2 -translate-y-1/2 text-secondary text-xs pointer-events-none">expand_more</span>
-            </div>
-
-            <div class="relative">
-                <select name="outcome" onchange="this.form.submit()" class="h-8 pl-3 pr-7 bg-surface-container-low text-xs text-primary rounded border border-border appearance-none cursor-pointer">
-                    <option value="all">All Outcomes</option>
-                    <option value="ok" {{ $outcome === 'ok' ? 'selected' : '' }}>OK (Success)</option>
-                    <option value="transient_fail" {{ $outcome === 'transient_fail' ? 'selected' : '' }}>Transient Fail</option>
-                    <option value="permanent_fail" {{ $outcome === 'permanent_fail' ? 'selected' : '' }}>Permanent Fail</option>
-                </select>
-                <span class="material-symbols-outlined absolute right-1.5 top-1/2 -translate-y-1/2 text-secondary text-xs pointer-events-none">expand_more</span>
-            </div>
-
-            <div class="relative">
-                <select name="direction" onchange="this.form.submit()" class="h-8 pl-3 pr-7 bg-surface-container-low text-xs text-primary rounded border border-border appearance-none cursor-pointer">
-                    <option value="all">All Directions</option>
-                    <option value="out" {{ $direction === 'out' ? 'selected' : '' }}>Outbound (Push)</option>
-                    <option value="in" {{ $direction === 'in' ? 'selected' : '' }}>Inbound (Webhook/Poll)</option>
-                </select>
-                <span class="material-symbols-outlined absolute right-1.5 top-1/2 -translate-y-1/2 text-secondary text-xs pointer-events-none">expand_more</span>
-            </div>
-
-            @if($channelId || $outcome || $direction || $correlationId)
-                <a href="{{ route('sync-logs') }}" class="h-8 px-2 text-secondary hover:text-primary text-xs flex items-center gap-1">
-                    <span class="material-symbols-outlined text-sm">filter_list_off</span>
-                    <span>Clear</span>
+    <!-- Main Audit Log Ledger Container -->
+    <div class="bg-surface rounded-xl border border-border shadow-sm flex flex-col overflow-hidden mb-6">
+        <!-- 5-Segment Tab Navigation Bar -->
+        <div class="px-4 pt-2 bg-surface-container-low flex items-center justify-between border-b border-border overflow-x-auto select-none">
+            <div class="flex items-center space-x-1" role="tablist">
+                <!-- All Events -->
+                <a href="{{ route('sync-logs', array_merge(request()->query(), ['tab' => 'all', 'page' => 1])) }}"
+                   class="px-3.5 py-2.5 rounded-t-lg {{ $activeTab === 'all' ? 'bg-surface text-primary font-semibold border-t border-x border-border relative' : 'text-secondary hover:text-primary hover:bg-surface-container font-medium' }} text-xs flex items-center gap-1.5 transition-colors">
+                    <span>All Events</span>
+                    <span class="text-[11px] font-semibold bg-surface-container px-1.5 py-0.5 rounded-full text-secondary">{{ number_format($tabCounts['all']) }}</span>
+                    @if($activeTab === 'all')
+                        <div class="absolute -bottom-px left-0 right-0 h-0.5 bg-primary"></div>
+                    @endif
                 </a>
-            @endif
-        </form>
-    </div>
 
-    <!-- Logs Table -->
-    <div class="bg-surface rounded-xl border border-border shadow-sm overflow-hidden mb-8">
+                <!-- Needs Attention -->
+                <a href="{{ route('sync-logs', array_merge(request()->query(), ['tab' => 'attention', 'page' => 1])) }}"
+                   class="px-3.5 py-2.5 rounded-t-lg {{ $activeTab === 'attention' ? 'bg-surface text-danger font-semibold border-t border-x border-border relative' : 'text-danger font-medium hover:bg-danger-soft/30' }} text-xs flex items-center gap-1.5 transition-colors">
+                    <span>Needs Attention</span>
+                    <span class="text-[11px] font-bold bg-danger-soft text-danger px-1.5 py-0.5 rounded-full border border-danger/20">{{ $tabCounts['attention'] }}</span>
+                    @if($activeTab === 'attention')
+                        <div class="absolute -bottom-px left-0 right-0 h-0.5 bg-danger"></div>
+                    @endif
+                </a>
+
+                <!-- Reservations -->
+                <a href="{{ route('sync-logs', array_merge(request()->query(), ['tab' => 'reservations', 'page' => 1])) }}"
+                   class="px-3.5 py-2.5 rounded-t-lg {{ $activeTab === 'reservations' ? 'bg-surface text-primary font-semibold border-t border-x border-border relative' : 'text-secondary hover:text-primary hover:bg-surface-container font-medium' }} text-xs flex items-center gap-1.5 transition-colors">
+                    <span>Reservations</span>
+                    <span class="text-[11px] bg-surface-container px-1.5 py-0.5 rounded-full text-secondary">{{ number_format($tabCounts['reservations']) }}</span>
+                    @if($activeTab === 'reservations')
+                        <div class="absolute -bottom-px left-0 right-0 h-0.5 bg-primary"></div>
+                    @endif
+                </a>
+
+                <!-- Rates & Availability -->
+                <a href="{{ route('sync-logs', array_merge(request()->query(), ['tab' => 'availability_rates', 'page' => 1])) }}"
+                   class="px-3.5 py-2.5 rounded-t-lg {{ $activeTab === 'availability_rates' ? 'bg-surface text-primary font-semibold border-t border-x border-border relative' : 'text-secondary hover:text-primary hover:bg-surface-container font-medium' }} text-xs flex items-center gap-1.5 transition-colors">
+                    <span>Rates &amp; Availability</span>
+                    <span class="text-[11px] bg-surface-container px-1.5 py-0.5 rounded-full text-secondary">{{ number_format($tabCounts['availability_rates']) }}</span>
+                    @if($activeTab === 'availability_rates')
+                        <div class="absolute -bottom-px left-0 right-0 h-0.5 bg-primary"></div>
+                    @endif
+                </a>
+
+                <!-- Stop-Sell Toggles -->
+                <a href="{{ route('sync-logs', array_merge(request()->query(), ['tab' => 'stopsell', 'page' => 1])) }}"
+                   class="px-3.5 py-2.5 rounded-t-lg {{ $activeTab === 'stopsell' ? 'bg-surface text-primary font-semibold border-t border-x border-border relative' : 'text-secondary hover:text-primary hover:bg-surface-container font-medium' }} text-xs flex items-center gap-1.5 transition-colors">
+                    <span>Stop-Sell Toggles</span>
+                    <span class="text-[11px] bg-surface-container px-1.5 py-0.5 rounded-full text-secondary">{{ number_format($tabCounts['stopsell']) }}</span>
+                    @if($activeTab === 'stopsell')
+                        <div class="absolute -bottom-px left-0 right-0 h-0.5 bg-primary"></div>
+                    @endif
+                </a>
+            </div>
+
+            <div class="hidden lg:flex items-center gap-2 text-secondary text-xs pr-2">
+                <span class="relative flex h-2 w-2">
+                    <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-tertiary-container opacity-75"></span>
+                    <span class="relative inline-flex rounded-full h-2 w-2 bg-tertiary-container"></span>
+                </span>
+                <span class="font-data-mono text-[11px]">Level-triggered sync active</span>
+            </div>
+        </div>
+
+        <!-- Filters Bar Inside Ledger Container -->
+        <div class="p-3.5 bg-surface border-b border-border">
+            <form method="GET" action="{{ route('sync-logs') }}" class="flex flex-wrap items-center gap-3">
+                <input type="hidden" name="tab" value="{{ $activeTab }}">
+
+                <div class="relative w-64">
+                    <span class="material-symbols-outlined absolute left-2.5 top-1/2 -translate-y-1/2 text-secondary text-base">search</span>
+                    <input type="text" name="correlation_id" value="{{ $correlationId }}" placeholder="Filter correlation ID..."
+                           class="h-8 pl-8 pr-3 bg-surface-container-low text-xs text-primary rounded border border-border focus:outline-none w-full">
+                </div>
+
+                <div class="relative">
+                    <select name="channel_id" onchange="this.form.submit()" class="h-8 pl-3 pr-7 bg-surface-container-low text-xs text-primary rounded border border-border appearance-none cursor-pointer">
+                        <option value="">All Channels</option>
+                        @foreach($channels as $ch)
+                            <option value="{{ $ch->id }}" {{ $channelId == $ch->id ? 'selected' : '' }}>{{ $ch->name }}</option>
+                        @endforeach
+                    </select>
+                    <span class="material-symbols-outlined absolute right-1.5 top-1/2 -translate-y-1/2 text-secondary text-xs pointer-events-none">expand_more</span>
+                </div>
+
+                <div class="relative">
+                    <select name="outcome" onchange="this.form.submit()" class="h-8 pl-3 pr-7 bg-surface-container-low text-xs text-primary rounded border border-border appearance-none cursor-pointer">
+                        <option value="all">All Outcomes</option>
+                        <option value="ok" {{ $outcome === 'ok' ? 'selected' : '' }}>OK (Success)</option>
+                        <option value="transient_fail" {{ $outcome === 'transient_fail' ? 'selected' : '' }}>Transient Fail</option>
+                        <option value="permanent_fail" {{ $outcome === 'permanent_fail' ? 'selected' : '' }}>Permanent Fail</option>
+                    </select>
+                    <span class="material-symbols-outlined absolute right-1.5 top-1/2 -translate-y-1/2 text-secondary text-xs pointer-events-none">expand_more</span>
+                </div>
+
+                <div class="relative">
+                    <select name="direction" onchange="this.form.submit()" class="h-8 pl-3 pr-7 bg-surface-container-low text-xs text-primary rounded border border-border appearance-none cursor-pointer">
+                        <option value="all">All Directions</option>
+                        <option value="out" {{ $direction === 'out' ? 'selected' : '' }}>Outbound (Push)</option>
+                        <option value="in" {{ $direction === 'in' ? 'selected' : '' }}>Inbound (Webhook/Poll)</option>
+                    </select>
+                    <span class="material-symbols-outlined absolute right-1.5 top-1/2 -translate-y-1/2 text-secondary text-xs pointer-events-none">expand_more</span>
+                </div>
+
+                @if($channelId || $outcome || $direction || $correlationId)
+                    <a href="{{ route('sync-logs', ['tab' => $activeTab]) }}" class="h-8 px-2 text-secondary hover:text-primary text-xs flex items-center gap-1">
+                        <span class="material-symbols-outlined text-sm">filter_list_off</span>
+                        <span>Clear</span>
+                    </a>
+                @endif
+            </form>
+        </div>
         <div class="overflow-x-auto">
             <table class="w-full text-left border-collapse text-xs">
                 <thead>

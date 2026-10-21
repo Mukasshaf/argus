@@ -12,6 +12,8 @@
         const minutes = String(istDate.getMinutes()).padStart(2, '0');
         $('#liveClock').text('IST ' + hours + ':' + minutes);
     }
+    // Initialize immediately
+    updateClock();
     setInterval(updateClock, 10000);
 
     // 2. Poll Sync Status every 5 seconds (Section 9)
@@ -54,7 +56,8 @@
             });
     }
 
-    if (window.location.pathname.startsWith('/extranet')) {
+    if (window.location.pathname.startsWith('/extranet') || window.location.pathname === '/') {
+        pollSyncStatus();
         setInterval(pollSyncStatus, 5000);
     }
 })(jQuery);

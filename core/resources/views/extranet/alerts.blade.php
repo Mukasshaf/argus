@@ -73,26 +73,40 @@
     <!-- Filter & Triage Bar -->
     <div class="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3 p-2 bg-surface rounded-xl border border-border shadow-sm">
         <div class="flex flex-wrap items-center gap-1.5">
-            <a href="{{ route('alerts', ['filter' => 'open']) }}"
+            <a href="{{ route('alerts', array_merge(request()->query(), ['filter' => 'open'])) }}"
                class="h-8 px-3 rounded text-xs font-medium transition-colors flex items-center gap-1.5 {{ $filter === 'open' ? 'bg-primary text-on-primary' : 'bg-surface hover:bg-surface-container text-secondary' }}">
                 <span>All Open</span>
                 <span class="px-1.5 py-0.2 rounded-full bg-surface/20 text-xs">{{ $openCount }}</span>
             </a>
-            <a href="{{ route('alerts', ['filter' => 'critical']) }}"
+            <a href="{{ route('alerts', array_merge(request()->query(), ['filter' => 'critical'])) }}"
                class="h-8 px-3 rounded text-xs font-medium transition-colors flex items-center gap-1.5 {{ $filter === 'critical' ? 'bg-danger text-on-error' : 'bg-surface hover:bg-surface-container text-danger border border-transparent hover:border-border' }}">
                 <span class="w-1.5 h-1.5 rounded-full bg-danger"></span>
                 <span>Critical ({{ $criticalCount }})</span>
             </a>
-            <a href="{{ route('alerts', ['filter' => 'warning']) }}"
+            <a href="{{ route('alerts', array_merge(request()->query(), ['filter' => 'warning'])) }}"
                class="h-8 px-3 rounded text-xs font-medium transition-colors flex items-center gap-1.5 {{ $filter === 'warning' ? 'bg-warning text-on-primary' : 'bg-surface hover:bg-surface-container text-warning border border-transparent hover:border-border' }}">
                 <span class="w-1.5 h-1.5 rounded-full bg-warning"></span>
                 <span>Warnings ({{ $warningCount }})</span>
             </a>
-            <a href="{{ route('alerts', ['filter' => 'resolved']) }}"
+            <a href="{{ route('alerts', array_merge(request()->query(), ['filter' => 'resolved'])) }}"
                class="h-8 px-3 rounded text-xs font-medium transition-colors border border-transparent hover:border-border {{ $filter === 'resolved' ? 'bg-secondary text-on-primary' : 'bg-surface hover:bg-surface-container text-secondary' }}">
                 <span>Recently Resolved ({{ $resolvedCount }})</span>
             </a>
         </div>
+
+        <form method="GET" action="{{ route('alerts') }}" class="flex items-center gap-2">
+            <input type="hidden" name="filter" value="{{ $filter }}">
+            <div class="relative w-64">
+                <span class="material-symbols-outlined absolute left-2.5 top-1/2 -translate-y-1/2 text-secondary text-base">search</span>
+                <input type="text" name="search" value="{{ $search }}" placeholder="Search alert impact, room..."
+                       class="h-8 pl-8 pr-3 bg-surface-container-low text-xs text-primary rounded border border-border focus:outline-none w-full">
+            </div>
+            @if($search)
+                <a href="{{ route('alerts', ['filter' => $filter]) }}" class="h-8 px-2 text-secondary hover:text-primary text-xs flex items-center">
+                    <span class="material-symbols-outlined text-sm">close</span>
+                </a>
+            @endif
+        </form>
     </div>
 
     <!-- Scannable Open Alerts List -->
@@ -148,7 +162,24 @@
                 </div>
 
                 <!-- Actions -->
-                <div class="flex items-center gap-2 self-start md:self-center shrink-0">
+                <div class="flex items-center gap-2 self-start md:self-center shrink-0 flex-wrap">
+                    @if($alert->type->value === 'oversold')
+                        <a href="{{ route('reservations', ['tab' => 'oversold']) }}" class="h-8 px-3 rounded bg-danger-soft text-danger hover:bg-danger hover:text-on-error border border-danger/30 text-xs font-semibold transition-colors flex items-center gap-1 shadow-xs">
+                            <span class="material-symbols-outlined text-xs">swap_horiz</span>
+                            <span>Review Deficit</span>
+                        </a>
+                    @elseif($alert->type->value === 'channel_blocked' || $alert->type->value === 'unmapped_code')
+                        <a href="{{ route('channels') }}" class="h-8 px-3 rounded bg-warning-soft text-warning hover:bg-warning hover:text-on-primary border border-warning/30 text-xs font-semibold transition-colors flex items-center gap-1 shadow-xs">
+                            <span class="material-symbols-outlined text-xs">schema</span>
+                            <span>Manage Mappings</span>
+                        </a>
+                    @elseif($alert->type->value === 'drift')
+                        <a href="{{ route('calendar') }}" class="h-8 px-3 rounded bg-surface-container text-primary hover:bg-surface-container-high border border-border text-xs font-medium transition-colors flex items-center gap-1 shadow-xs">
+                            <span class="material-symbols-outlined text-xs">calendar_month</span>
+                            <span>Check Calendar</span>
+                        </a>
+                    @endif
+
                     @if(!$alert->acknowledged_at && !$isResolved)
                         <form action="{{ route('alerts.acknowledge', $alert->id) }}" method="POST">
                             @csrf

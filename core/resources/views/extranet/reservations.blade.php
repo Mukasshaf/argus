@@ -15,9 +15,13 @@
                 </span>
             </div>
             <div class="flex items-center gap-2">
-                <button type="button" onclick="window.print()" class="h-8 px-3 bg-surface border border-border text-primary font-title-sm text-xs rounded hover:bg-surface-container transition-colors flex items-center gap-1.5">
-                    <span class="material-symbols-outlined text-base">download</span>
-                    <span>Export</span>
+                <a href="{{ route('reservations.export') }}" class="h-9 px-3.5 bg-surface border border-border text-primary font-medium text-xs rounded hover:bg-surface-container transition-colors flex items-center gap-1.5 shadow-sm">
+                    <span class="material-symbols-outlined text-base text-secondary">download</span>
+                    <span>Export CSV</span>
+                </a>
+                <button type="button" onclick="$('#manualBookingModal').removeClass('hidden')" class="h-9 px-3.5 bg-tertiary-container hover:bg-[#3D5B54] text-on-primary font-semibold text-xs rounded shadow-sm transition-all flex items-center gap-1.5">
+                    <span class="material-symbols-outlined text-base">add</span>
+                    <span>Manual Reservation</span>
                 </button>
             </div>
         </div>
@@ -337,6 +341,104 @@
                 </div>
             </div>
         @endif
+    </div>
+</div>
+
+<!-- Manual Reservation Modal -->
+<div id="manualBookingModal" class="{{ $errors->has('manual') ? '' : 'hidden' }} fixed inset-0 bg-primary/50 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+    <div class="bg-surface rounded-xl shadow-xl border border-border w-full max-w-xl overflow-hidden flex flex-col">
+        <div class="px-6 py-4 border-b border-border flex items-center justify-between bg-surface-container-low">
+            <div class="flex items-center gap-2">
+                <span class="material-symbols-outlined text-tertiary-container text-xl">add_circle</span>
+                <h3 class="font-heading-sm text-base font-semibold text-primary">Create Manual Reservation</h3>
+            </div>
+            <button type="button" onclick="$('#manualBookingModal').addClass('hidden')" class="text-secondary hover:text-primary">
+                <span class="material-symbols-outlined text-lg">close</span>
+            </button>
+        </div>
+
+        <form action="{{ route('reservations.manual') }}" method="POST" class="p-6 space-y-4">
+            @csrf
+
+            @if($errors->has('manual'))
+                <div class="p-3 rounded bg-danger-soft border border-danger/30 text-danger text-xs font-medium">
+                    {{ $errors->first('manual') }}
+                </div>
+            @endif
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-xs font-semibold text-secondary uppercase tracking-wider mb-1">Guest Name</label>
+                    <input type="text" name="guest_name" required placeholder="e.g. Vikram Malhotra"
+                           class="w-full h-9 px-3 bg-surface border border-border rounded text-xs text-primary focus:outline-none focus:border-tertiary-container">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-secondary uppercase tracking-wider mb-1">Channel Origin</label>
+                    <select name="channel_id" required class="w-full h-9 px-3 bg-surface border border-border rounded text-xs text-primary focus:outline-none focus:border-tertiary-container">
+                        @foreach($channels as $ch)
+                            <option value="{{ $ch->id }}">{{ $ch->name }} ({{ $ch->protocol->value }})</option>
+                        @endforeach
+                    </select>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-xs font-semibold text-secondary uppercase tracking-wider mb-1">Room Type</label>
+                    <select name="room_type_id" required class="w-full h-9 px-3 bg-surface border border-border rounded text-xs text-primary focus:outline-none focus:border-tertiary-container">
+                        @foreach($roomTypes as $rm)
+                            <option value="{{ $rm->id }}">{{ $rm->name }} ({{ $rm->code }})</option>
+                        @endforeach
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-secondary uppercase tracking-wider mb-1">Rate Plan</label>
+                    <select name="rate_plan_id" required class="w-full h-9 px-3 bg-surface border border-border rounded text-xs text-primary focus:outline-none focus:border-tertiary-container">
+                        @foreach($ratePlans as $rp)
+                            <option value="{{ $rp->id }}">{{ $rp->name }} ({{ $rp->code }}) — Base ₹{{ number_format($rp->base_price) }}</option>
+                        @endforeach
+                    </select>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                    <label class="block text-xs font-semibold text-secondary uppercase tracking-wider mb-1">Check-in Date</label>
+                    <input type="date" name="check_in" value="{{ now()->toDateString() }}" required
+                           class="w-full h-9 px-3 bg-surface border border-border rounded text-xs text-primary focus:outline-none focus:border-tertiary-container">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-secondary uppercase tracking-wider mb-1">Check-out Date</label>
+                    <input type="date" name="check_out" value="{{ now()->addDay()->toDateString() }}" required
+                           class="w-full h-9 px-3 bg-surface border border-border rounded text-xs text-primary focus:outline-none focus:border-tertiary-container">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-secondary uppercase tracking-wider mb-1">Adults</label>
+                    <input type="number" name="adults" min="1" max="10" value="1" required
+                           class="w-full h-9 px-3 bg-surface border border-border rounded text-xs text-primary focus:outline-none focus:border-tertiary-container">
+                </div>
+            </div>
+
+            <div>
+                <label class="block text-xs font-semibold text-secondary uppercase tracking-wider mb-1">Total Stay Price (INR)</label>
+                <input type="number" name="total_price" min="0" value="4800" required
+                       class="w-full h-9 px-3 bg-surface border border-border rounded text-xs text-primary focus:outline-none focus:border-tertiary-container">
+                <span class="text-[11px] text-secondary mt-1 block">Level-triggered sync worker will immediately broadcast inventory reduction to all channels.</span>
+            </div>
+
+            <div class="pt-3 border-t border-border flex items-center justify-end gap-2">
+                <button type="button" onclick="$('#manualBookingModal').addClass('hidden')" class="h-9 px-4 rounded bg-surface hover:bg-surface-container text-secondary text-xs font-medium border border-border transition-colors">
+                    Cancel
+                </button>
+                <button type="submit" class="h-9 px-4 rounded bg-tertiary-container hover:bg-[#3D5B54] text-on-primary text-xs font-semibold transition-all shadow-sm">
+                    Create Booking &amp; Update Inventory
+                </button>
+            </div>
+        </form>
     </div>
 </div>
 @endsection

@@ -19,8 +19,16 @@ class AlertController extends Controller
         $hotel = Hotel::first();
         $filter = $request->query('filter', 'open'); // open, critical, warning, resolved
         $type = $request->query('type');
+        $search = $request->query('search');
 
         $query = Alert::orderBy('created_at', 'desc');
+
+        if ($search) {
+            $query->where(function ($q) use ($search) {
+                $q->where('title', 'like', "%{$search}%")
+                    ->orWhere('message', 'like', "%{$search}%");
+            });
+        }
 
         if ($filter === 'open') {
             $query->whereNull('resolved_at');
@@ -36,7 +44,7 @@ class AlertController extends Controller
             $query->where('type', $type);
         }
 
-        $alerts = $query->paginate(20);
+        $alerts = $query->paginate(20)->withQueryString();
 
         // Counts
         $openCount = Alert::whereNull('resolved_at')->count();
@@ -49,6 +57,7 @@ class AlertController extends Controller
             'alerts' => $alerts,
             'filter' => $filter,
             'type' => $type,
+            'search' => $search,
             'openCount' => $openCount,
             'criticalCount' => $criticalCount,
             'warningCount' => $warningCount,
