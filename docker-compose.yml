@@ -1,0 +1,147 @@
+services:
+  app:
+    build:
+      context: ./core
+      dockerfile: ../docker/Dockerfile.dev
+    container_name: staybridge_core
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - APP_NAME=StayBridge
+      - APP_ENV=local
+      - APP_KEY=base64:uJbK063bNqC6bKz4+JbK063bNqC6bKz4+JbK063bNqA=
+      - APP_DEBUG=true
+      - APP_URL=http://localhost:8000
+      - DB_CONNECTION=mysql
+      - DB_HOST=mysql
+      - DB_PORT=3306
+      - DB_DATABASE=staybridge
+      - DB_USERNAME=staybridge
+      - DB_PASSWORD=secret
+      - QUEUE_CONNECTION=database
+      - CACHE_STORE=database
+      - SESSION_DRIVER=database
+      - SIM_BASE_URL=http://otasim:8081
+      - MELA_STORAGE_PATH=/shared/sftp
+    volumes:
+      - ./core:/var/www/html
+      - sftp_shared:/shared/sftp
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks:
+      - staybridge_net
+
+  mysql:
+    image: mysql:8.0
+    container_name: staybridge_mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: staybridge
+      MYSQL_USER: staybridge
+      MYSQL_PASSWORD: secret
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-proot"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - staybridge_net
+
+  worker:
+    build:
+      context: ./core
+      dockerfile: ../docker/Dockerfile.dev
+    container_name: staybridge_worker
+    restart: unless-stopped
+    command: php artisan queue:work --queue=staybridge_ingest,staybridge_sync,default --tries=6 --max-time=3600
+    environment:
+      - APP_NAME=StayBridge
+      - APP_ENV=local
+      - APP_KEY=base64:uJbK063bNqC6bKz4+JbK063bNqC6bKz4+JbK063bNqA=
+      - APP_DEBUG=true
+      - DB_CONNECTION=mysql
+      - DB_HOST=mysql
+      - DB_PORT=3306
+      - DB_DATABASE=staybridge
+      - DB_USERNAME=staybridge
+      - DB_PASSWORD=secret
+      - QUEUE_CONNECTION=database
+      - CACHE_STORE=database
+      - SIM_BASE_URL=http://otasim:8081
+      - MELA_STORAGE_PATH=/shared/sftp
+    volumes:
+      - ./core:/var/www/html
+      - sftp_shared:/shared/sftp
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks:
+      - staybridge_net
+
+  scheduler:
+    build:
+      context: ./core
+      dockerfile: ../docker/Dockerfile.dev
+    container_name: staybridge_scheduler
+    restart: unless-stopped
+    command: php artisan schedule:work
+    environment:
+      - APP_NAME=StayBridge
+      - APP_ENV=local
+      - APP_KEY=base64:uJbK063bNqC6bKz4+JbK063bNqC6bKz4+JbK063bNqA=
+      - APP_DEBUG=true
+      - DB_CONNECTION=mysql
+      - DB_HOST=mysql
+      - DB_PORT=3306
+      - DB_DATABASE=staybridge
+      - DB_USERNAME=staybridge
+      - DB_PASSWORD=secret
+      - QUEUE_CONNECTION=database
+      - CACHE_STORE=database
+      - SIM_BASE_URL=http://otasim:8081
+      - MELA_STORAGE_PATH=/shared/sftp
+    volumes:
+      - ./core:/var/www/html
+      - sftp_shared:/shared/sftp
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks:
+      - staybridge_net
+
+  otasim:
+    build:
+      context: ./otasim
+      dockerfile: ../docker/Dockerfile.otasim
+    container_name: staybridge_otasim
+    restart: unless-stopped
+    ports:
+      - "8081:8081"
+    environment:
+      - APP_NAME=OTASimulator
+      - APP_ENV=local
+      - APP_KEY=base64:uJbK063bNqC6bKz4+JbK063bNqC6bKz4+JbK063bNqB=
+      - APP_DEBUG=true
+      - APP_URL=http://localhost:8081
+      - CORE_BASE_URL=http://app:8000
+      - MELA_STORAGE_PATH=/shared/sftp
+    volumes:
+      - ./otasim:/var/www/html
+      - sftp_shared:/shared/sftp
+    networks:
+      - staybridge_net
+
+volumes:
+  mysql_data:
+  sftp_shared:
+
+networks:
+  staybridge_net:
+    driver: bridge

@@ -1,0 +1,53 @@
+name: ci
+
+on: [push, pull_request]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: staybridge_test
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+
+    defaults:
+      run:
+        working-directory: core
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: mbstring, xml, ctype, iconv, intl, pdo, pdo_mysql, bcmath, zip
+          coverage: none
+
+      - name: Install dependencies
+        run: composer install --no-interaction --prefer-dist
+
+      - name: Setup environment
+        run: |
+          cp .env.ci .env
+          php artisan key:generate
+
+      - name: Run migrations
+        run: php artisan migrate --force
+
+      - name: Pint check
+        run: vendor/bin/pint --test
+
+      - name: Larastan analyse
+        run: vendor/bin/phpstan analyse --level=5
+
+      - name: Run unit & feature tests
+        run: php artisan test

@@ -1,0 +1,18 @@
+FROM php:8.3-cli-alpine
+
+RUN apk add --no-cache \
+    git \
+    curl \
+    sqlite \
+    sqlite-dev \
+    libxml2-dev \
+    bash \
+    && docker-php-ext-install pdo_sqlite xml pcntl bcmath
+
+COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
+
+WORKDIR /var/www/html
+
+EXPOSE 8081
+
+CMD ["php", "artisan", "serve", "--host=0.0.0.0", "--port=8081"]
