@@ -26,7 +26,9 @@ services:
       - MELA_STORAGE_PATH=/shared/sftp
     volumes:
       - ./core:/var/www/html
+      - core_vendor:/var/www/html/vendor
       - sftp_shared:/shared/sftp
+    command: sh -c "mkdir -p storage/framework/cache/data storage/framework/sessions storage/framework/views storage/logs bootstrap/cache && chmod -R 777 storage bootstrap/cache 2>/dev/null || true; php artisan serve --host=0.0.0.0 --port=8000"
     depends_on:
       mysql:
         condition: service_healthy
@@ -43,7 +45,7 @@ services:
       MYSQL_USER: staybridge
       MYSQL_PASSWORD: secret
     ports:
-      - "3306:3306"
+      - "3307:3306"
     volumes:
       - mysql_data:/var/lib/mysql
     healthcheck:
@@ -60,7 +62,7 @@ services:
       dockerfile: ../docker/Dockerfile.dev
     container_name: staybridge_worker
     restart: unless-stopped
-    command: php artisan queue:work --queue=staybridge_ingest,staybridge_sync,default --tries=6 --max-time=3600
+    command: sh -c "mkdir -p storage/framework/cache/data storage/framework/sessions storage/framework/views storage/logs bootstrap/cache && chmod -R 777 storage bootstrap/cache 2>/dev/null || true; php artisan queue:work --queue=staybridge_ingest,staybridge_sync,default --tries=6 --max-time=3600"
     environment:
       - APP_NAME=StayBridge
       - APP_ENV=local
@@ -78,6 +80,7 @@ services:
       - MELA_STORAGE_PATH=/shared/sftp
     volumes:
       - ./core:/var/www/html
+      - core_vendor:/var/www/html/vendor
       - sftp_shared:/shared/sftp
     depends_on:
       mysql:
@@ -91,7 +94,7 @@ services:
       dockerfile: ../docker/Dockerfile.dev
     container_name: staybridge_scheduler
     restart: unless-stopped
-    command: php artisan schedule:work
+    command: sh -c "mkdir -p storage/framework/cache/data storage/framework/sessions storage/framework/views storage/logs bootstrap/cache && chmod -R 777 storage bootstrap/cache 2>/dev/null || true; php artisan schedule:work"
     environment:
       - APP_NAME=StayBridge
       - APP_ENV=local
@@ -109,6 +112,7 @@ services:
       - MELA_STORAGE_PATH=/shared/sftp
     volumes:
       - ./core:/var/www/html
+      - core_vendor:/var/www/html/vendor
       - sftp_shared:/shared/sftp
     depends_on:
       mysql:
@@ -134,12 +138,16 @@ services:
       - MELA_STORAGE_PATH=/shared/sftp
     volumes:
       - ./otasim:/var/www/html
+      - otasim_vendor:/var/www/html/vendor
       - sftp_shared:/shared/sftp
+    command: sh -c "mkdir -p storage/framework/cache/data storage/framework/sessions storage/framework/views storage/logs bootstrap/cache && chmod -R 777 storage bootstrap/cache 2>/dev/null || true; php artisan serve --host=0.0.0.0 --port=8081"
     networks:
       - staybridge_net
 
 volumes:
   mysql_data:
+  core_vendor:
+  otasim_vendor:
   sftp_shared:
 
 networks:

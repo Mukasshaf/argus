@@ -156,9 +156,9 @@ class DatabaseSeeder extends Seeder
             }
 
             foreach ($savedRatePlans as $key => $plan) {
-                ChannelRateMapping::firstOrCreate(
-                    ['channel_id' => $ch->id, 'rate_plan_id' => $plan->id],
-                    ['external_rate_code' => $plan->code]
+                ChannelRateMapping::updateOrCreate(
+                    ['channel_id' => $ch->id, 'external_rate_code' => $plan->code],
+                    ['rate_plan_id' => $plan->id]
                 );
             }
         }
