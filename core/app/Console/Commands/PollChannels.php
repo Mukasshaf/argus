@@ -16,7 +16,7 @@ use Throwable;
 
 class PollChannels extends Command
 {
-    protected $signature = 'staybridge:poll-channels';
+    protected $signature = 'argus:poll-channels';
     protected $description = 'Pulls reservations for polling channels and dispatches ingestion jobs';
 
     public function handle(ChannelAdapterFactory $factory): int

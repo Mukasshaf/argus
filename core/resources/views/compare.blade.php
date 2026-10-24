@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Compare Rates — {{ $hotel->name }} | StayBridge</title>
+    <title>Compare Rates — {{ $hotel->name }} | Argus</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Lora:ital,wght@0,500;0,600;1,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -31,13 +31,48 @@
     <!-- Header -->
     <header class="bg-surface border-b border-border py-4 px-6 shadow-sm">
         <div class="max-w-6xl mx-auto flex items-center justify-between">
-            <div class="flex items-center gap-3">
-                <div class="w-8 h-8 rounded bg-primary text-white flex items-center justify-center font-bold text-sm tracking-wider">
-                    SB
+            @php
+                $allHotels = \App\Models\Hotel::all();
+            @endphp
+            <div class="flex items-center gap-3.5">
+                <div class="w-9 h-9 rounded-lg bg-primary text-white flex items-center justify-center font-bold text-xs tracking-wider font-mono shadow-sm">
+                    {{ strtoupper(substr($hotel->code, 0, 3)) }}
                 </div>
-                <div>
-                    <h1 class="text-lg font-bold tracking-tight text-primary font-['Lora',serif]">{{ $hotel->name }}</h1>
-                    <p class="text-xs text-secondary">{{ $hotel->city }}, India • Currency: INR (₹)</p>
+                <div class="relative">
+                    <button type="button"
+                            onclick="document.getElementById('compareHotelDropdown').classList.toggle('hidden'); document.getElementById('compareDropdownArrow').classList.toggle('rotate-180');"
+                            class="flex items-center gap-1.5 text-left group cursor-pointer focus:outline-none">
+                        <div>
+                            <div class="flex items-center gap-1">
+                                <h1 class="text-lg font-bold tracking-tight text-primary font-['Lora',serif] group-hover:text-accent transition-colors">{{ $hotel->name }}</h1>
+                                <span class="material-symbols-outlined text-secondary text-base transition-transform duration-200 group-hover:text-accent" id="compareDropdownArrow">expand_more</span>
+                            </div>
+                            <p class="text-xs text-secondary">{{ $hotel->city }}, India • Currency: INR (₹) • <span class="text-accent underline font-medium">Switch Hotel</span></p>
+                        </div>
+                    </button>
+
+                    <!-- Dropdown Menu -->
+                    <div id="compareHotelDropdown" class="hidden absolute left-0 top-full mt-2 w-72 bg-white border border-border rounded-xl shadow-xl z-50 py-1.5 overflow-hidden ring-1 ring-black/5">
+                        <div class="px-3.5 py-2 bg-surface-container border-b border-border flex items-center justify-between">
+                            <span class="text-[10px] uppercase font-bold text-secondary tracking-wider">Select Hotel</span>
+                            <span class="text-[10px] text-secondary font-medium">{{ $allHotels->count() }} Properties</span>
+                        </div>
+                        <div class="divide-y divide-border/50">
+                            @foreach($allHotels as $h)
+                                @php $isActive = $h->id === $hotel->id; @endphp
+                                <a href="{{ route('compare', ['hotel' => $h->code, 'checkin' => $checkIn, 'checkout' => $checkOut, 'adults' => $adults]) }}"
+                                   class="flex items-center justify-between px-3.5 py-2.5 text-xs hover:bg-[#F4EFEB] transition-colors {{ $isActive ? 'bg-[#EAE5DF] font-semibold text-primary' : 'text-primary' }}">
+                                    <div>
+                                        <div class="font-medium text-sm">{{ $h->name }}</div>
+                                        <div class="text-[11px] text-secondary mt-0.5">{{ $h->city }} · <span class="font-mono text-[10px]">{{ $h->code }}</span></div>
+                                    </div>
+                                    @if($isActive)
+                                        <span class="material-symbols-outlined text-base text-accent">check_circle</span>
+                                    @endif
+                                </a>
+                            @endforeach
+                        </div>
+                    </div>
                 </div>
             </div>
             <a href="{{ route('login') }}" class="text-xs font-semibold text-accent hover:underline flex items-center gap-1">
@@ -129,16 +164,22 @@
             @endif
         </div>
 
-        <!-- Honest Disclaimer -->
-        <div class="bg-surface-container rounded-lg border border-border p-4 text-xs text-secondary leading-relaxed">
-            <strong class="text-primary font-semibold">Note on Real-World Comparison Engines:</strong>
-            This comparison view queries central availability and computes channel markups in real-time. In production, commercial travel comparison engines (metasearch like Google Hotels, Kayak, Trivago) do not directly query hotel channel managers' internal relational databases. Instead, they ingest high-throughput batch ARI (Availability, Rates, and Inventory) XML/JSON feeds pushed by channel managers or pull partner APIs via dedicated high-concurrency caching proxies.
-        </div>
     </main>
 
     <!-- Footer -->
     <footer class="bg-white border-t border-border py-4 px-6 text-center text-xs text-secondary">
-        &copy; {{ date('Y') }} StayBridge Hotel Channel Manager. Simulated Indian Hospitality Engine.
+        &copy; {{ date('Y') }} Argus
     </footer>
+
+    <script>
+        document.addEventListener('click', function(e) {
+            const dropdown = document.getElementById('compareHotelDropdown');
+            const arrow = document.getElementById('compareDropdownArrow');
+            if (dropdown && !dropdown.contains(e.target) && !e.target.closest('button[onclick*="compareHotelDropdown"]')) {
+                dropdown.classList.add('hidden');
+                if (arrow) arrow.classList.remove('rotate-180');
+            }
+        });
+    </script>
 </body>
 </html>

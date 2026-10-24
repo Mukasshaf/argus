@@ -22,7 +22,7 @@ use Illuminate\Support\Facades\DB;
 
 class ExtendInventory extends Command
 {
-    protected $signature = 'staybridge:extend-inventory {--days=540}';
+    protected $signature = 'argus:extend-inventory {--days=540}';
     protected $description = 'Pre-generate room_inventory, rate_prices, and channel_sync_state rows for mapped subjects';
 
     public function handle(): int

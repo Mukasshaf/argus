@@ -1,8 +1,8 @@
 {
     "$schema": "https://getcomposer.org/schema.json",
-    "name": "staybridge/otasim",
+    "name": "argus/otasim",
     "type": "project",
-    "description": "OTA Simulator for StayBridge Channel Manager",
+    "description": "OTA Simulator for Argus Channel Manager",
     "license": "MIT",
     "require": {
         "php": "^8.2|^8.3",
@@ -13,7 +13,9 @@
     },
     "autoload": {
         "psr-4": {
-            "Sim\\": "app/"
+            "Sim\\": "app/",
+            "Database\\Factories\\": "database/factories/",
+            "Database\\Seeders\\": "database/seeders/"
         }
     },
     "config": {

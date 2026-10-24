@@ -58,8 +58,10 @@ class RaceTest extends TestCase
             'base_price' => 3500,
         ]);
 
+        // The channel ids are assigned by the database, so the workers are
+        // told which id to book against (see the --channel option) instead of
+        // assuming that the first two channels always get ids 1 and 2.
         $this->raahi = Channel::create([
-            'id' => 1,
             'code' => 'raahi',
             'name' => 'Raahi Stays',
             'protocol' => 'xml',
@@ -68,7 +70,6 @@ class RaceTest extends TestCase
         ]);
 
         $this->sarai = Channel::create([
-            'id' => 2,
             'code' => 'sarai',
             'name' => 'Sarai Direct',
             'protocol' => 'json',
@@ -117,13 +118,13 @@ class RaceTest extends TestCase
             'DB_CONNECTION' => config('database.default', 'mysql'),
             'DB_HOST' => config('database.connections.mysql.host', '127.0.0.1'),
             'DB_PORT' => (string) config('database.connections.mysql.port', 3306),
-            'DB_DATABASE' => config('database.connections.mysql.database', 'staybridge_test'),
+            'DB_DATABASE' => config('database.connections.mysql.database', 'argus_test'),
             'DB_USERNAME' => config('database.connections.mysql.username', 'root'),
             'DB_PASSWORD' => config('database.connections.mysql.password', 'root'),
         ];
 
         foreach ($workerArgsList as $idx => $args) {
-            $cmd = array_merge([$phpBinary, $artisan, 'staybridge:race-worker'], $args);
+            $cmd = array_merge([$phpBinary, $artisan, 'argus:race-worker'], $args);
             $proc = new Process($cmd, base_path(), $env, null, 60.0);
             $proc->start();
             $processes[] = $proc;
@@ -135,7 +136,20 @@ class RaceTest extends TestCase
             $results[] = [
                 'exit_code' => $proc->getExitCode() ?? -1,
                 'output' => trim($proc->getOutput()),
+                'error_output' => trim($proc->getErrorOutput()),
             ];
+        }
+
+        // A worker that never reached the command (unknown option, boot error,
+        // deadlock) prints no result at all. Counting that as a success would
+        // let a broken worker pass the race, so it fails the test outright.
+        foreach ($results as $idx => $r) {
+            $this->assertStringContainsString(
+                'RESULT:',
+                $r['output'],
+                "Worker {$idx} did not report a result (exit code {$r['exit_code']}). "
+                ."stdout: {$r['output']} | stderr: {$r['error_output']}"
+            );
         }
 
         return $results;
@@ -167,9 +181,10 @@ class RaceTest extends TestCase
                 $barrier,
                 (string) $i,
                 "--external_id=RACE1-REQ-{$i}",
-                '--version=1',
+                '--external_version=1',
                 '--check_in=2026-12-01',
                 '--check_out=2026-12-02',
+                "--channel={$this->sarai->id}",
             ];
         }
 
@@ -178,9 +193,9 @@ class RaceTest extends TestCase
         $confirmed = 0;
         $rejected = 0;
         foreach ($results as $r) {
-            if ($r['exit_code'] === 0 || str_contains($r['output'], 'RESULT:201')) {
+            if (str_contains($r['output'], 'RESULT:201')) {
                 $confirmed++;
-            } elseif ($r['exit_code'] === 1 || str_contains($r['output'], 'RESULT:409')) {
+            } elseif (str_contains($r['output'], 'RESULT:409')) {
                 $rejected++;
             }
         }
@@ -229,9 +244,10 @@ class RaceTest extends TestCase
                 $barrier,
                 (string) $i,
                 "--external_id=RACE2-NOTIF-{$i}",
-                '--version=1',
+                '--external_version=1',
                 '--check_in=2026-12-01',
                 '--check_out=2026-12-02',
+                "--channel={$this->raahi->id}",
             ];
         }
 
@@ -239,7 +255,7 @@ class RaceTest extends TestCase
 
         $applied = 0;
         foreach ($results as $r) {
-            if ($r['exit_code'] === 0 || str_contains($r['output'], 'RESULT:applied')) {
+            if (str_contains($r['output'], 'RESULT:applied')) {
                 $applied++;
             }
         }
@@ -289,9 +305,10 @@ class RaceTest extends TestCase
                 $barrier,
                 (string) $i,
                 '--external_id=RACE3-DUP-TARGET',
-                '--version=1',
+                '--external_version=1',
                 '--check_in=2026-12-01',
                 '--check_out=2026-12-02',
+                "--channel={$this->raahi->id}",
             ];
         }
 
@@ -300,9 +317,9 @@ class RaceTest extends TestCase
         $applied = 0;
         $duplicates = 0;
         foreach ($results as $r) {
-            if ($r['exit_code'] === 0 || str_contains($r['output'], 'RESULT:applied')) {
+            if (str_contains($r['output'], 'RESULT:applied')) {
                 $applied++;
-            } else {
+            } elseif (str_contains($r['output'], 'RESULT:duplicate')) {
                 $duplicates++;
             }
         }
@@ -376,20 +393,22 @@ class RaceTest extends TestCase
                 $barrier,
                 '1',
                 '--external_id=RACE4-TARGET',
-                '--version=2',
+                '--external_version=2',
                 '--type=upsert',
                 '--check_in=2026-12-01',
                 '--check_out=2026-12-03',
+                "--channel={$this->raahi->id}",
             ],
             [
                 'race4',
                 $barrier,
                 '2',
                 '--external_id=RACE4-TARGET',
-                '--version=3',
+                '--external_version=3',
                 '--type=cancel',
                 '--check_in=2026-12-01',
                 '--check_out=2026-12-02',
+                "--channel={$this->raahi->id}",
             ],
         ];
 
@@ -441,9 +460,10 @@ class RaceTest extends TestCase
                 $barrier,
                 (string) $i,
                 "--external_id=RACE5-FWD-{$i}",
-                '--version=1',
+                '--external_version=1',
                 '--check_in=2026-12-01',
                 '--check_out=2026-12-04',
+                "--channel={$this->raahi->id}",
             ];
         }
 
@@ -454,9 +474,10 @@ class RaceTest extends TestCase
                 $barrier,
                 (string) $i,
                 "--external_id=RACE5-BWD-{$i}",
-                '--version=1',
+                '--external_version=1',
                 '--check_in=2026-12-03',
                 '--check_out=2026-12-06',
+                "--channel={$this->raahi->id}",
             ];
         }
 
@@ -498,9 +519,10 @@ class RaceTest extends TestCase
                 $barrier,
                 (string) $i,
                 "--external_id=NC1-WORKER-{$i}",
-                '--version=1',
+                '--external_version=1',
                 '--check_in=2026-12-01',
                 '--check_out=2026-12-02',
+                "--channel={$this->sarai->id}",
                 '--nc=nc1',
             ];
         }

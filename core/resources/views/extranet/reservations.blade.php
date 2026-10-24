@@ -14,7 +14,7 @@
                     Live Feed
                 </span>
             </div>
-            <div class="flex items-center gap-2">
+            <div class="flex items-center gap-2 pt-3 mt-2">
                 <a href="{{ route('reservations.export') }}" class="h-9 px-3.5 bg-surface border border-border text-primary font-medium text-xs rounded hover:bg-surface-container transition-colors flex items-center gap-1.5 shadow-sm">
                     <span class="material-symbols-outlined text-base text-secondary">download</span>
                     <span>Export CSV</span>
@@ -136,7 +136,6 @@
                             <option value="{{ $c->id }}" {{ $channelId == $c->id ? 'selected' : '' }}>{{ $c->name }}</option>
                         @endforeach
                     </select>
-                    <span class="material-symbols-outlined absolute right-1.5 top-1/2 -translate-y-1/2 text-secondary text-xs pointer-events-none">expand_more</span>
                 </div>
                 @if($search || $channelId)
                     <a href="{{ route('reservations', ['tab' => $tab]) }}" class="h-8 px-2 text-secondary hover:text-primary text-xs flex items-center gap-1">

@@ -3,12 +3,12 @@ services:
     build:
       context: ./core
       dockerfile: ../docker/Dockerfile.dev
-    container_name: staybridge_core
+    container_name: argus_core
     restart: unless-stopped
     ports:
       - "8000:8000"
     environment:
-      - APP_NAME=StayBridge
+      - APP_NAME=Argus
       - APP_ENV=local
       - APP_KEY=base64:uJbK063bNqC6bKz4+JbK063bNqC6bKz4+JbK063bNqA=
       - APP_DEBUG=true
@@ -16,67 +16,72 @@ services:
       - DB_CONNECTION=mysql
       - DB_HOST=mysql
       - DB_PORT=3306
-      - DB_DATABASE=staybridge
-      - DB_USERNAME=staybridge
+      - DB_DATABASE=argus
+      - DB_USERNAME=argus
       - DB_PASSWORD=secret
       - QUEUE_CONNECTION=database
       - CACHE_STORE=database
       - SESSION_DRIVER=database
       - SIM_BASE_URL=http://otasim:8081
+      - RAAHI_BASE_URL=http://otasim:8081/raahi
+      - SARAI_BASE_URL=http://otasim:8081/sarai
       - MELA_STORAGE_PATH=/shared/sftp
     volumes:
       - ./core:/var/www/html
       - core_vendor:/var/www/html/vendor
       - sftp_shared:/shared/sftp
-    command: sh -c "mkdir -p storage/framework/cache/data storage/framework/sessions storage/framework/views storage/logs bootstrap/cache && chmod -R 777 storage bootstrap/cache 2>/dev/null || true; php artisan serve --host=0.0.0.0 --port=8000"
+    command: sh -c "mkdir -p storage/framework/cache/data storage/framework/sessions storage/framework/views storage/logs bootstrap/cache && chmod -R 777 storage bootstrap/cache 2>/dev/null || true; php artisan package:discover --no-interaction; php artisan migrate --force --no-interaction; PHP_CLI_SERVER_WORKERS=8 php artisan serve --no-reload --host=0.0.0.0 --port=8000"
     depends_on:
       mysql:
         condition: service_healthy
     networks:
-      - staybridge_net
+      - argus_net
 
   mysql:
     image: mysql:8.0
-    container_name: staybridge_mysql
+    container_name: argus_mysql
     restart: unless-stopped
     environment:
       MYSQL_ROOT_PASSWORD: root
-      MYSQL_DATABASE: staybridge
-      MYSQL_USER: staybridge
+      MYSQL_DATABASE: argus
+      MYSQL_USER: argus
       MYSQL_PASSWORD: secret
     ports:
       - "3307:3306"
     volumes:
       - mysql_data:/var/lib/mysql
+      - ./docker/mysql/init:/docker-entrypoint-initdb.d:ro
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-proot"]
       interval: 5s
       timeout: 5s
       retries: 10
     networks:
-      - staybridge_net
+      - argus_net
 
   worker:
     build:
       context: ./core
       dockerfile: ../docker/Dockerfile.dev
-    container_name: staybridge_worker
+    container_name: argus_worker
     restart: unless-stopped
-    command: sh -c "mkdir -p storage/framework/cache/data storage/framework/sessions storage/framework/views storage/logs bootstrap/cache && chmod -R 777 storage bootstrap/cache 2>/dev/null || true; php artisan queue:work --queue=staybridge_ingest,staybridge_sync,default --tries=6 --max-time=3600"
+    command: sh -c "mkdir -p storage/framework/cache/data storage/framework/sessions storage/framework/views storage/logs bootstrap/cache && chmod -R 777 storage bootstrap/cache 2>/dev/null || true; php artisan package:discover --no-interaction; php artisan queue:work --queue=argus_ingest,argus_sync,default --tries=6 --max-time=3600"
     environment:
-      - APP_NAME=StayBridge
+      - APP_NAME=Argus
       - APP_ENV=local
       - APP_KEY=base64:uJbK063bNqC6bKz4+JbK063bNqC6bKz4+JbK063bNqA=
       - APP_DEBUG=true
       - DB_CONNECTION=mysql
       - DB_HOST=mysql
       - DB_PORT=3306
-      - DB_DATABASE=staybridge
-      - DB_USERNAME=staybridge
+      - DB_DATABASE=argus
+      - DB_USERNAME=argus
       - DB_PASSWORD=secret
       - QUEUE_CONNECTION=database
       - CACHE_STORE=database
       - SIM_BASE_URL=http://otasim:8081
+      - RAAHI_BASE_URL=http://otasim:8081/raahi
+      - SARAI_BASE_URL=http://otasim:8081/sarai
       - MELA_STORAGE_PATH=/shared/sftp
     volumes:
       - ./core:/var/www/html
@@ -86,29 +91,31 @@ services:
       mysql:
         condition: service_healthy
     networks:
-      - staybridge_net
+      - argus_net
 
   scheduler:
     build:
       context: ./core
       dockerfile: ../docker/Dockerfile.dev
-    container_name: staybridge_scheduler
+    container_name: argus_scheduler
     restart: unless-stopped
-    command: sh -c "mkdir -p storage/framework/cache/data storage/framework/sessions storage/framework/views storage/logs bootstrap/cache && chmod -R 777 storage bootstrap/cache 2>/dev/null || true; php artisan schedule:work"
+    command: sh -c "mkdir -p storage/framework/cache/data storage/framework/sessions storage/framework/views storage/logs bootstrap/cache && chmod -R 777 storage bootstrap/cache 2>/dev/null || true; php artisan package:discover --no-interaction; php artisan schedule:work"
     environment:
-      - APP_NAME=StayBridge
+      - APP_NAME=Argus
       - APP_ENV=local
       - APP_KEY=base64:uJbK063bNqC6bKz4+JbK063bNqC6bKz4+JbK063bNqA=
       - APP_DEBUG=true
       - DB_CONNECTION=mysql
       - DB_HOST=mysql
       - DB_PORT=3306
-      - DB_DATABASE=staybridge
-      - DB_USERNAME=staybridge
+      - DB_DATABASE=argus
+      - DB_USERNAME=argus
       - DB_PASSWORD=secret
       - QUEUE_CONNECTION=database
       - CACHE_STORE=database
       - SIM_BASE_URL=http://otasim:8081
+      - RAAHI_BASE_URL=http://otasim:8081/raahi
+      - SARAI_BASE_URL=http://otasim:8081/sarai
       - MELA_STORAGE_PATH=/shared/sftp
     volumes:
       - ./core:/var/www/html
@@ -118,13 +125,13 @@ services:
       mysql:
         condition: service_healthy
     networks:
-      - staybridge_net
+      - argus_net
 
   otasim:
     build:
       context: ./otasim
       dockerfile: ../docker/Dockerfile.otasim
-    container_name: staybridge_otasim
+    container_name: argus_otasim
     restart: unless-stopped
     ports:
       - "8081:8081"
@@ -136,13 +143,18 @@ services:
       - APP_URL=http://localhost:8081
       - CORE_BASE_URL=http://app:8000
       - MELA_STORAGE_PATH=/shared/sftp
+      # The simulator only owns the three sim_* tables, so it cannot use the
+      # database session or cache drivers that Laravel defaults to.
+      - SESSION_DRIVER=file
+      - CACHE_STORE=file
+      - CACHE_PREFIX=argus_otasim_cache
     volumes:
       - ./otasim:/var/www/html
       - otasim_vendor:/var/www/html/vendor
       - sftp_shared:/shared/sftp
-    command: sh -c "mkdir -p storage/framework/cache/data storage/framework/sessions storage/framework/views storage/logs bootstrap/cache && chmod -R 777 storage bootstrap/cache 2>/dev/null || true; php artisan serve --host=0.0.0.0 --port=8081"
+    command: sh -c "mkdir -p storage/framework/cache/data storage/framework/sessions storage/framework/views storage/logs bootstrap/cache && chmod -R 777 storage bootstrap/cache 2>/dev/null || true; php artisan package:discover --no-interaction; touch database/otasim.sqlite; php artisan migrate --force --no-interaction; php artisan db:seed --force --no-interaction; PHP_CLI_SERVER_WORKERS=8 php artisan serve --no-reload --host=0.0.0.0 --port=8081"
     networks:
-      - staybridge_net
+      - argus_net
 
 volumes:
   mysql_data:
@@ -151,5 +163,6 @@ volumes:
   sftp_shared:
 
 networks:
-  staybridge_net:
+  argus_net:
+    name: argus_net
     driver: bridge

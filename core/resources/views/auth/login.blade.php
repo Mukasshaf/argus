@@ -16,7 +16,6 @@
     <div class="w-full max-w-md bg-white border border-[#E4E1D9] rounded-2xl p-8 shadow-sm">
         <div class="mb-6 text-center">
             <h1 class="text-3xl font-semibold tracking-tight text-[#111e25]" style="font-family: 'Lora', 'Noto Serif', serif;">Argus</h1>
-            <p class="text-xs text-[#57615d] mt-1">Lotus Residency, Bengaluru · Hotel Operations Extranet</p>
         </div>
 
         @if($errors->any())

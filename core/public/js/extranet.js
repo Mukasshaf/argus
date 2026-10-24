@@ -60,4 +60,12 @@
         pollSyncStatus();
         setInterval(pollSyncStatus, 5000);
     }
+
+    // 3. Close Hotel Selector Dropdown on Outside Click
+    $(document).on('click', function(e) {
+        if (!$(e.target).closest('#hotelSelectorContainer').length) {
+            $('#hotelDropdownMenu').addClass('hidden');
+            $('#hotelDropdownArrow').removeClass('rotate-180');
+        }
+    });
 })(jQuery);

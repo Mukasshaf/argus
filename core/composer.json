@@ -1,8 +1,8 @@
 {
     "$schema": "https://getcomposer.org/schema.json",
-    "name": "staybridge/core",
+    "name": "argus/core",
     "type": "project",
-    "description": "StayBridge Hotel Channel Manager Core Application",
+    "description": "Argus Hotel Channel Manager Core Application",
     "keywords": ["laravel", "framework", "channel-manager"],
     "license": "MIT",
     "require": {

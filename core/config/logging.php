@@ -7,8 +7,18 @@ return [
     'channels' => [
         'stack' => [
             'driver' => 'stack',
-            'channels' => ['single', 'stderr'],
+            'channels' => ['daily', 'stderr'],
             'ignore_exceptions' => false,
+        ],
+        // The `single` channel grew to 278 MB in one dev session because every
+        // channel failure is logged with a full upstream body. `daily` rotates
+        // and caps retention so the log cannot fill the volume again.
+        'daily' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/laravel.log'),
+            'level' => env('LOG_LEVEL', 'debug'),
+            'days' => 7,
+            'replace_placeholders' => true,
         ],
         'single' => [
             'driver' => 'single',

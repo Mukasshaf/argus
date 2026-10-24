@@ -31,16 +31,16 @@
             </form>
             <button type="button" onclick="alert('Connect new channels: Browse 28 certified integrations in the directory.');" class="h-9 px-4 bg-tertiary-container hover:bg-[#3D5B54] text-on-primary text-xs font-semibold rounded-[9px] transition-all flex items-center gap-1.5 shadow-sm hover:shadow active:scale-[0.98]">
                 <span class="material-symbols-outlined text-base">add</span>
-                <span>+ Add Channel</span>
+                <span>Add Channel</span>
             </button>
         </div>
     </div>
 
     <!-- Clean Slim Summary Row (3 Metrics) -->
     <div class="bg-surface rounded-xl border border-border p-4 mb-6 shadow-sm">
-        <div class="grid grid-cols-1 md:grid-cols-3 divide-y md:divide-y-0 md:divide-x divide-border">
+        <div class="grid grid-cols-1 md:grid-cols-3 divide-y md:divide-y-0 md:divide-x divide-border items-stretch">
             <!-- Metric 1: Active Channels -->
-            <div class="flex items-center gap-3.5 py-2 md:py-0 md:px-4 first:pl-2">
+            <div class="flex items-center gap-3.5 py-4 md:py-0 md:px-4 first:pl-2">
                 <div class="w-9 h-9 rounded-lg bg-success-soft flex items-center justify-center shrink-0">
                     <span class="material-symbols-outlined text-tertiary-container text-lg">hub</span>
                 </div>
@@ -260,23 +260,6 @@
                 </span>
             </div>
         </div>
-    </div>
-
-    <!-- Subtle Integration Directory Callout -->
-    <div class="bg-surface rounded-xl border border-border p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs mb-8">
-        <div class="flex items-center gap-3">
-            <div class="w-8 h-8 rounded-lg bg-surface-container-low border border-border flex items-center justify-center shrink-0 text-tertiary-container">
-                <span class="material-symbols-outlined text-lg">explore</span>
-            </div>
-            <div>
-                <span class="font-medium text-primary">Looking to connect a new OTA or GDS?</span>
-                <span class="text-secondary block sm:inline sm:ml-1">Browse 28 certified integrations in the Add Channel directory.</span>
-            </div>
-        </div>
-        <button type="button" onclick="alert('OTA Directory: Booking.com, Agoda, Expedia, MakeMyTrip, Cleartrip, Traveloka, Trip.com, and 21 other connectors available in production.');" class="h-8 px-3.5 rounded-md bg-surface hover:bg-surface-container text-primary border border-border font-medium transition-colors shrink-0 self-start sm:self-center flex items-center gap-1">
-            <span>Explore Directory</span>
-            <span class="material-symbols-outlined text-sm">open_in_new</span>
-        </button>
     </div>
 </div>
 @endsection

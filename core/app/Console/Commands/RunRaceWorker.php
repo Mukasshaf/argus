@@ -12,17 +12,18 @@ use Illuminate\Console\Command;
 
 class RunRaceWorker extends Command
 {
-    protected $signature = 'staybridge:race-worker 
-        {scenario : race1, race2, race3, race4, race5} 
-        {barrier : Start timestamp with microtime} 
-        {worker_id : Integer worker id} 
-        {--external_id= : Custom external reservation id} 
-        {--version=1 : External event version} 
-        {--type=upsert : upsert or cancel} 
-        {--room=STD : External room code} 
-        {--rate=EP : External rate code} 
-        {--check_in=2026-12-01 : Check-in date} 
-        {--check_out=2026-12-02 : Check-out date} 
+    protected $signature = 'argus:race-worker
+        {scenario : race1, race2, race3, race4, race5}
+        {barrier : Start timestamp with microtime}
+        {worker_id : Integer worker id}
+        {--external_id= : Custom external reservation id}
+        {--external_version=1 : External event version}
+        {--type=upsert : upsert or cancel}
+        {--room=STD : External room code}
+        {--rate=EP : External rate code}
+        {--check_in=2026-12-01 : Check-in date}
+        {--check_out=2026-12-02 : Check-out date}
+        {--channel=0 : Channel id to book against (0 = scenario default)}
         {--nc= : Negative control toggle (nc1, nc2, nc3)}';
 
     protected $description = 'Worker process for concurrent race barrier testing';
@@ -35,13 +36,20 @@ class RunRaceWorker extends Command
         $barrier = (float) $this->argument('barrier');
         $workerId = (int) $this->argument('worker_id');
         $extId = (string) ($this->option('external_id') ?: "RACE-{$scenario}-{$workerId}");
-        $version = (int) $this->option('version');
+        $version = (int) $this->option('external_version');
         $type = (string) $this->option('type');
         $room = (string) $this->option('room');
         $rate = (string) $this->option('rate');
         $checkIn = (string) $this->option('check_in');
         $checkOut = (string) $this->option('check_out');
+        $channelOverride = (int) $this->option('channel');
         $nc = (string) $this->option('nc');
+
+        if (! in_array($scenario, ['race1', 'race2', 'race3', 'race4', 'race5'], true)) {
+            $this->error("Unknown scenario [{$scenario}].");
+
+            return 1;
+        }
 
         // Apply negative control flags if specified
         if ($nc === 'nc1') {
@@ -64,7 +72,7 @@ class RunRaceWorker extends Command
         if ($scenario === 'race1') {
             // Request mode: atomic guarded decrement
             $evt = new ReservationEvent(
-                channelId: 2, // Sarai
+                channelId: $channelOverride ?: 2, // Sarai
                 externalId: $extId,
                 externalVersion: $version,
                 type: $type,
@@ -84,7 +92,7 @@ class RunRaceWorker extends Command
         }
 
         // Scenarios race2, race3, race4, race5: Notification mode via IngestService
-        $channelId = 1; // Raahi
+        $channelId = $channelOverride ?: 1; // Raahi
         $evt = new ReservationEvent(
             channelId: $channelId,
             externalId: $extId,

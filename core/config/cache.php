@@ -19,5 +19,5 @@ return [
             'path' => storage_path('framework/cache/data'),
         ],
     ],
-    'prefix' => env('CACHE_PREFIX', 'staybridge_cache_'),
+    'prefix' => env('CACHE_PREFIX', 'argus_cache_'),
 ];

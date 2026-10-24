@@ -16,7 +16,9 @@ WORKDIR /var/www/html
 
 COPY composer.json ./
 
-RUN composer install --no-dev --no-scripts --no-autoloader
+# Dev dependencies are kept: the test suite, Pint and Larastan are part of the
+# development loop, and `php artisan test` is unavailable without them.
+RUN composer install --no-scripts --no-autoloader
 
 COPY . .
 

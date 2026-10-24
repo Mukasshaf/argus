@@ -9,26 +9,14 @@
                 <h1 class="font-heading-md text-2xl font-semibold text-primary tracking-tight whitespace-nowrap" style="font-family: 'Lora', 'Noto Serif', Georgia, serif;">
                     Inventory &amp; Rate Calendar
                 </h1>
-                <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-success-soft text-tertiary-container text-xs font-semibold shrink-0">
-                    <span class="w-1.5 h-1.5 rounded-full bg-tertiary-container animate-pulse"></span>
-                    Live Sync Active
-                </span>
-                <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-surface-container-high text-primary text-xs font-medium border border-border shrink-0">
-                    <span class="material-symbols-outlined text-xs text-secondary">view_day</span>
-                    10-Day Sliding Window
-                </span>
             </div>
             <div class="flex items-center gap-2 text-secondary text-xs">
                 <span class="font-medium text-tertiary-container">Showing {{ $startDate->format('M d') }} – {{ $endDate->format('M d, Y') }}</span>
-                <span>•</span>
-                <span>Today: {{ $today->format('D, d M') }} (IST {{ $today->format('H:i') }})</span>
-                <span>•</span>
-                <span>{{ $activeChannelsCount }} / {{ $totalChannelsCount }} connected OTAs</span>
             </div>
         </div>
 
         <!-- Sliding Window Navigation Controls -->
-        <div class="flex flex-wrap items-center gap-3">
+        <div class="flex flex-wrap items-center gap-2">
             <div class="flex items-center bg-surface rounded-lg shadow-sm border border-border p-0.5 shrink-0">
                 <a href="{{ route('calendar', ['start_date' => $startDate->copy()->subDays(10)->toDateString()]) }}"
                    class="h-8 px-2.5 flex items-center gap-1 text-xs font-medium text-on-surface-variant hover:text-on-surface hover:bg-surface-container rounded transition-colors"
@@ -56,13 +44,12 @@
 
             <div class="flex items-center gap-2">
                 <div class="relative">
-                    <select id="filterRoomsSelect" onchange="filterRooms(this.value)" class="h-8 pl-2.5 pr-7 bg-surface hover:bg-surface-container text-on-surface text-xs rounded-lg border border-border shadow-sm appearance-none cursor-pointer focus:outline-none font-medium">
+                    <select id="filterRoomsSelect" onchange="filterRooms(this.value)" class="h-8 pl-2.5 pr-3 bg-surface hover:bg-surface-container text-on-surface text-xs rounded-lg border border-border shadow-sm cursor-pointer focus:outline-none font-medium">
                         <option value="all">Filter Rooms: All ({{ $roomTypes->count() }})</option>
                         @foreach($roomTypes as $r)
                             <option value="{{ $r->code }}">{{ $r->name }} ({{ $r->code }})</option>
                         @endforeach
                     </select>
-                    <span class="material-symbols-outlined absolute right-1.5 top-1/2 -translate-y-1/2 text-secondary text-xs pointer-events-none">expand_more</span>
                 </div>
 
                 <button type="button" onclick="$('#bulkEditModal').removeClass('hidden')"

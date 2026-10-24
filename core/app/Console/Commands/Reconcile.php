@@ -11,7 +11,7 @@ use Illuminate\Support\Facades\DB;
 
 class Reconcile extends Command
 {
-    protected $signature = 'staybridge:reconcile';
+    protected $signature = 'argus:reconcile';
     protected $description = 'Asserts booked == count(reservation_nights) for each room type and date; raises drift alerts';
 
     public function handle(): int

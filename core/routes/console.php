@@ -2,10 +2,8 @@
 
 declare(strict_types=1);
 
-use Illuminate\Support\Facades\Schedule;
-
-Schedule::command('staybridge:dispatch-sync')->everyMinute()->withoutOverlapping();
-Schedule::command('staybridge:poll-channels')->everyMinute()->withoutOverlapping();
-Schedule::command('staybridge:extend-inventory --days=540')->dailyAt('03:00');
-Schedule::command('staybridge:reconcile')->hourly();
-Schedule::command('model:prune')->daily();
+/*
+ * The schedule is defined once, in bootstrap/app.php via withSchedule().
+ * Defining it here as well registered every command twice, so the sync
+ * sweeper and the channel poller both ran twice per minute.
+ */

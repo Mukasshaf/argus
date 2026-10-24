@@ -30,7 +30,7 @@ class SyncChannelJob implements ShouldQueue, ShouldBeUnique
 
     public function __construct(public int $channelId)
     {
-        $this->onQueue('staybridge_sync');
+        $this->onQueue('argus_sync');
     }
 
     public function uniqueId(): string

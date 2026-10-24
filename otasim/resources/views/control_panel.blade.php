@@ -10,8 +10,7 @@
     <div class="max-w-5xl mx-auto space-y-6">
         <div class="flex items-center justify-between border-b pb-4">
             <div>
-                <h1 class="text-2xl font-bold text-gray-900">StayBridge OTA Simulator (otasim)</h1>
-                <p class="text-xs text-gray-500">Three Simulated OTAs: Raahi (XML), Sarai (JSON), Mela (CSV)</p>
+                <h1 class="text-2xl font-bold text-gray-900">Argus OTA Simulator (otasim)</h1>
             </div>
             <div class="text-xs bg-emerald-50 text-emerald-700 px-3 py-1.5 rounded-full font-semibold border border-emerald-200">
                 Port 8081 · {{ $stateCount }} Replica State Records
@@ -69,26 +68,26 @@
         <div class="bg-white p-6 rounded-xl border border-gray-200 shadow-sm space-y-4">
             <h2 class="font-bold text-base text-gray-900">Scenario Injections &amp; Race Triggers</h2>
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <form action="/sim/race/simultaneous" method="POST" class="p-4 rounded-lg bg-red-50 border border-red-200 space-y-2">
-                    <h4 class="font-bold text-xs text-red-900">Race: Book Last Room</h4>
-                    <p class="text-[11px] text-red-700">Fires simultaneous booking on Raahi (Webhook) &amp; Sarai (Request Mode) for same room/night.</p>
-                    <button type="submit" class="w-full h-8 bg-red-600 hover:bg-red-700 text-white font-bold text-xs rounded transition-colors">
+                <form action="/sim/race/simultaneous" method="POST" class="p-4 rounded-lg bg-white border border-gray-200 space-y-2">
+                    <h4 class="font-bold text-xs text-gray-900">Race: Book Last Room</h4>
+                    <p class="text-[11px] text-gray-600">Fires simultaneous booking on Raahi (Webhook) &amp; Sarai (Request Mode) for same room/night.</p>
+                    <button type="submit" class="w-full h-8 bg-gray-900 hover:bg-black text-white font-semibold text-xs rounded transition-colors">
                         Simulate Race Now
                     </button>
                 </form>
 
-                <form action="/sim/raahi/webhook" method="POST" class="p-4 rounded-lg bg-blue-50 border border-blue-200 space-y-2">
-                    <h4 class="font-bold text-xs text-blue-900">Send Raahi Webhook</h4>
-                    <p class="text-[11px] text-blue-700">Delivers signed HMAC OTA_HotelResNotifRQ commit snapshot.</p>
-                    <button type="submit" class="w-full h-8 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded transition-colors">
+                <form action="/sim/raahi/webhook" method="POST" class="p-4 rounded-lg bg-white border border-gray-200 space-y-2">
+                    <h4 class="font-bold text-xs text-gray-900">Send Raahi Webhook</h4>
+                    <p class="text-[11px] text-gray-600">Delivers signed HMAC OTA_HotelResNotifRQ commit snapshot.</p>
+                    <button type="submit" class="w-full h-8 bg-gray-900 hover:bg-black text-white font-semibold text-xs rounded transition-colors">
                         Send Booking Webhook
                     </button>
                 </form>
 
-                <form action="/sim/sarai/booking" method="POST" class="p-4 rounded-lg bg-purple-50 border border-purple-200 space-y-2">
-                    <h4 class="font-bold text-xs text-purple-900">Send Sarai Realtime Request</h4>
-                    <p class="text-[11px] text-purple-700">Synchronous HTTP booking request; receives 201 or 409.</p>
-                    <button type="submit" class="w-full h-8 bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs rounded transition-colors">
+                <form action="/sim/sarai/booking" method="POST" class="p-4 rounded-lg bg-white border border-gray-200 space-y-2">
+                    <h4 class="font-bold text-xs text-gray-900">Send Sarai Realtime Request</h4>
+                    <p class="text-[11px] text-gray-600">Synchronous HTTP booking request; receives 201 or 409.</p>
+                    <button type="submit" class="w-full h-8 bg-gray-900 hover:bg-black text-white font-semibold text-xs rounded transition-colors">
                         Send Request Mode
                     </button>
                 </form>

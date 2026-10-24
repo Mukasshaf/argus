@@ -24,10 +24,10 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
     })
     ->withSchedule(function (Schedule $schedule) {
-        $schedule->command('staybridge:dispatch-sync')->everyMinute()->withoutOverlapping();
-        $schedule->command('staybridge:poll-channels')->everyMinute()->withoutOverlapping();
-        $schedule->command('staybridge:extend-inventory --days=540')->dailyAt('03:00');
-        $schedule->command('staybridge:reconcile')->hourly();
+        $schedule->command('argus:dispatch-sync')->everyMinute()->withoutOverlapping();
+        $schedule->command('argus:poll-channels')->everyMinute()->withoutOverlapping();
+        $schedule->command('argus:extend-inventory --days=540')->dailyAt('03:00');
+        $schedule->command('argus:reconcile')->hourly();
         $schedule->command('model:prune')->daily();
     })
     ->withExceptions(function (Exceptions $exceptions) {

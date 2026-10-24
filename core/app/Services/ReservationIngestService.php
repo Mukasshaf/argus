@@ -29,40 +29,65 @@ class ReservationIngestService
         $touchedByRoomType = [];
         $hotelId = 1;
 
-        $result = DB::transaction(function () use ($e, &$touchedByRoomType, &$hotelId) {
-            $room = ChannelRoomMapping::resolve($e->channelId, $e->roomCode);
-            $rate = ChannelRateMapping::resolve($e->channelId, $e->rateCode);
+        // The room, rate and hotel lookups happen outside the transaction on
+        // purpose. Under REPEATABLE READ a transaction takes its read view at
+        // its first consistent read, and that view then stays fixed for the
+        // whole transaction. Reading them inside would pin the view to the
+        // moment the delivery arrived, so a concurrent delivery that had
+        // already committed an extended stay would still be invisible when
+        // the nights are diffed below, and the cancellation would release
+        // only the nights it remembers. Resolving them first means the first
+        // consistent read inside the transaction is the nights read, which
+        // happens after the reservation row has been locked, so the view and
+        // the locked row agree.
+        $room = ChannelRoomMapping::resolve($e->channelId, $e->roomCode);
+        $rate = ChannelRateMapping::resolve($e->channelId, $e->rateCode);
 
-            if (!$room || !$rate) {
-                Alert::unmappedCode($e->channelId, 'reservation', "Room: {$e->roomCode}, Rate: {$e->rateCode}");
-                throw new UnmappedCodeException($e, "Unmapped room [{$e->roomCode}] or rate [{$e->rateCode}] code.");
-            }
+        if (!$room || !$rate) {
+            Alert::unmappedCode($e->channelId, 'reservation', "Room: {$e->roomCode}, Rate: {$e->rateCode}");
+            throw new UnmappedCodeException($e, "Unmapped room [{$e->roomCode}] or rate [{$e->rateCode}] code.");
+        }
 
-            $hotel = Hotel::first();
-            if ($hotel) {
-                $hotelId = $hotel->id;
-            }
+        $hotel = Hotel::first();
+        if ($hotel) {
+            $hotelId = $hotel->id;
+        }
 
+        $result = DB::transaction(function () use ($e, $room, $rate, $hotelId, &$touchedByRoomType) {
             // 1. Claim: Insert a version 0 placeholder if absent, then lock the row (unless NC2 active)
             if (!self::$skipClaimAndLock) {
-                DB::table('reservations')->insertOrIgnore([
-                    'hotel_id' => $hotelId,
-                    'room_type_id' => $room->room_type_id,
-                    'rate_plan_id' => $rate->rate_plan_id,
-                    'channel_id' => $e->channelId,
-                    'external_id' => $e->externalId,
-                    'external_version' => 0,
-                    'status' => ReservationStatus::Confirmed->value,
-                    'check_in' => $e->checkIn ?: now()->toDateString(),
-                    'check_out' => $e->checkOut ?: now()->addDay()->toDateString(),
-                    'guest_name' => $e->guestName,
-                    'adults' => $e->adults,
-                    'total_price' => $e->totalPrice,
-                    'currency' => $e->currency,
-                    'received_at' => now(),
-                    'created_at' => now(),
-                    'updated_at' => now(),
-                ]);
+                // ON DUPLICATE KEY UPDATE is used rather than INSERT IGNORE.
+                // INSERT IGNORE takes a shared lock on a row that already exists,
+                // and the FOR UPDATE below then has to upgrade that shared lock
+                // to an exclusive one. Concurrent deliveries of the same booking
+                // all hold the shared lock and all wait for the upgrade, which
+                // deadlocks them against each other. ON DUPLICATE KEY UPDATE
+                // takes the exclusive lock straight away, so the deliveries
+                // queue on the row and the version check below sees them one
+                // at a time. The update clause is a no-op, so an existing
+                // reservation keeps its external_version.
+                DB::table('reservations')->upsert(
+                    [[
+                        'hotel_id' => $hotelId,
+                        'room_type_id' => $room->room_type_id,
+                        'rate_plan_id' => $rate->rate_plan_id,
+                        'channel_id' => $e->channelId,
+                        'external_id' => $e->externalId,
+                        'external_version' => 0,
+                        'status' => ReservationStatus::Confirmed->value,
+                        'check_in' => $e->checkIn ?: now()->toDateString(),
+                        'check_out' => $e->checkOut ?: now()->addDay()->toDateString(),
+                        'guest_name' => $e->guestName,
+                        'adults' => $e->adults,
+                        'total_price' => $e->totalPrice,
+                        'currency' => $e->currency,
+                        'received_at' => now(),
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ]],
+                    ['channel_id', 'external_id'],
+                    ['external_version' => DB::raw('external_version')],
+                );
 
                 $res = Reservation::where('channel_id', $e->channelId)
                     ->where('external_id', $e->externalId)
@@ -99,6 +124,9 @@ class ReservationIngestService
             }
 
             // 2. Diff nights
+            // This is the first consistent read of the transaction, so the read
+            // view is taken here, after the reservation row was locked. The
+            // nights therefore match the reservation row that was just read.
             $oldNights = $res ? $res->nights()->pluck('stay_date')->map(fn($d) => (string) $d)->all() : [];
             $oldRoomTypeId = $res ? $res->room_type_id : $room->room_type_id;
             $newNights = $e->type === 'cancel' ? [] : Nights::between($e->checkIn, $e->checkOut);

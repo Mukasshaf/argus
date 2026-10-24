@@ -22,7 +22,7 @@ class ChannelController extends Controller
 {
     public function index(): View
     {
-        $hotel = Hotel::first();
+        $hotel = $this->getActiveHotel() ?? Hotel::first();
         $channels = Channel::with(['roomMappings.roomType', 'rateMappings.ratePlan'])->get();
 
         $activeChannelsCount = $channels->where('status', ChannelStatus::Active)->count();
@@ -68,14 +68,30 @@ class ChannelController extends Controller
 
     public function syncAll(): RedirectResponse
     {
+        Channel::query()->update([
+            'consecutive_failures' => 0,
+            'circuit_open_until' => null,
+            'status' => ChannelStatus::Active,
+        ]);
+        ChannelSyncState::whereNotNull('blocked_at')->update([
+            'blocked_at' => null,
+            'attempts' => 0,
+            'last_error' => null,
+            'updated_at' => now(),
+        ]);
         SyncKick::allChannels();
 
-        return back()->with('success', 'Triggered full synchronization for all active channels.');
+        return back()->with('success', 'Reset circuits and triggered full synchronization for all active channels.');
     }
 
     public function forceSync(int $id): RedirectResponse
     {
         $channel = Channel::findOrFail($id);
+        $channel->update([
+            'consecutive_failures' => 0,
+            'circuit_open_until' => null,
+            'status' => ChannelStatus::Active,
+        ]);
         SyncChannelJob::dispatch($channel->id);
 
         return back()->with('success', "Triggered full synchronization for {$channel->name}.");
@@ -98,6 +114,11 @@ class ChannelController extends Controller
     public function unblock(int $id): RedirectResponse
     {
         $channel = Channel::findOrFail($id);
+        $channel->update([
+            'consecutive_failures' => 0,
+            'circuit_open_until' => null,
+            'status' => ChannelStatus::Active,
+        ]);
         $count = ChannelSyncState::where('channel_id', $channel->id)
             ->whereNotNull('blocked_at')
             ->update([

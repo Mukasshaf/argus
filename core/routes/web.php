@@ -22,6 +22,10 @@ Route::get('/compare/{hotel}', [CompareController::class, 'index'])->name('compa
 Route::middleware(['auth'])->group(function () {
     Route::get('/', fn() => redirect()->route('calendar'));
 
+    // Hotels
+    Route::get('/extranet/hotels/switch/{id}', [\App\Http\Controllers\Extranet\HotelController::class, 'switch'])->name('hotels.switch');
+    Route::post('/extranet/hotels/switch/{id}', [\App\Http\Controllers\Extranet\HotelController::class, 'switch']);
+
     // Calendar
     Route::get('/extranet/calendar', [CalendarController::class, 'index'])->name('calendar');
     Route::patch('/extranet/calendar/cell', [CalendarController::class, 'updateCell'])->name('calendar.cell');

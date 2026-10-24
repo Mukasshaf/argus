@@ -16,7 +16,7 @@ class AlertController extends Controller
 {
     public function index(Request $request): View
     {
-        $hotel = Hotel::first();
+        $hotel = $this->getActiveHotel() ?? Hotel::first();
         $filter = $request->query('filter', 'open'); // open, critical, warning, resolved
         $type = $request->query('type');
         $search = $request->query('search');

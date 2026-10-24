@@ -73,6 +73,10 @@
                         "danger-soft": "#FDF2F2",
                         "secondary-container": "#d8e2dd"
                     },
+                    "spacing": {
+                        "60": "15rem",
+                        "sidebar": "15rem"
+                    },
                     "fontFamily": {
                         "heading-sm": ["Noto Serif", "Lora", "Georgia", "serif"],
                         "heading-md": ["Noto Serif", "Lora", "Georgia", "serif"],
@@ -123,25 +127,78 @@
 </head>
 <body class="bg-background font-body-md text-body-md text-on-surface antialiased">
     <!-- Fixed Left Sidebar matching Stitch Design -->
-    <aside class="fixed left-0 top-0 h-screen w-60 bg-surface border-r border-border z-50 flex flex-col justify-between select-none">
+    <aside class="fixed left-0 top-0 h-screen w-60 w-[240px] bg-surface border-r border-border z-50 flex flex-col justify-between select-none" style="width: 240px;">
         <div class="flex flex-col">
             <!-- Plain Text Wordmark 'Argus' in Noto Serif / Lora -->
             <div class="h-16 px-5 flex items-center justify-between border-b border-border">
                 <div class="flex items-baseline gap-2">
                     <span class="font-heading-md text-2xl font-semibold tracking-tight text-primary-container" style="font-family: 'Lora', 'Noto Serif', Georgia, serif;">Argus</span>
-                    <span class="font-label-sm text-[11px] uppercase tracking-wider text-secondary">Hotel Ops</span>
                 </div>
             </div>
 
-            <!-- Active Property Selector -->
-            <div class="p-3 border-b border-border">
-                <div class="p-2.5 rounded bg-surface-container-low border border-border flex items-center justify-between cursor-pointer hover:bg-surface-container transition-colors">
+            <!-- Active Property Selector Dropdown -->
+            @php
+                $hotelsList = \App\Models\Hotel::with('roomTypes')->get();
+                if ($hotelsList->count() < 2) {
+                    \App\Models\Hotel::firstOrCreate(
+                        ['code' => 'MYSORE01'],
+                        ['name' => 'Mysore Palace View', 'city' => 'Mysuru', 'timezone' => 'Asia/Kolkata', 'currency' => 'INR']
+                    );
+                    \App\Models\Hotel::firstOrCreate(
+                        ['code' => 'MALABAR01'],
+                        ['name' => 'Malabar Heritage Resort', 'city' => 'Kochi', 'timezone' => 'Asia/Kolkata', 'currency' => 'INR']
+                    );
+                    $hotelsList = \App\Models\Hotel::with('roomTypes')->get();
+                }
+                $activeHotelId = session('active_hotel_id');
+                $currentHotel = $activeHotelId ? ($hotelsList->firstWhere('id', $activeHotelId) ?? $hotelsList->first()) : $hotelsList->first();
+                $currentKeys = $currentHotel ? ($currentHotel->roomTypes->sum('total_rooms') ?: ($currentHotel->code === 'MYSORE01' ? 12 : ($currentHotel->code === 'MALABAR01' ? 20 : 18))) : 18;
+            @endphp
+            <div class="p-3 border-b border-border relative" id="hotelSelectorContainer">
+                <button type="button"
+                        id="hotelDropdownBtn"
+                        onclick="$('#hotelDropdownMenu').toggleClass('hidden'); $('#hotelDropdownArrow').toggleClass('rotate-180');"
+                        class="w-full p-2.5 rounded bg-surface-container-low border border-border flex items-center justify-between cursor-pointer hover:bg-surface-container transition-all text-left shadow-sm group">
                     <div class="flex flex-col min-w-0 pr-1">
-                        <span class="font-label-sm text-[10px] uppercase text-secondary tracking-wider">Active Property</span>
-                        <span class="font-title-sm text-xs font-semibold text-primary truncate mt-0.5">Lotus Residency</span>
-                        <span class="font-body-sm text-[11px] text-on-surface-variant truncate">Bengaluru · 18 Keys</span>
+                        <div class="flex items-center gap-1.5">
+                            <span class="w-1.5 h-1.5 rounded-full bg-tertiary-container animate-pulse"></span>
+                            <span class="font-label-sm text-[10px] uppercase text-secondary tracking-wider">Active Property</span>
+                        </div>
+                        <span class="font-title-sm text-xs font-semibold text-primary truncate mt-0.5">{{ $currentHotel ? $currentHotel->name : 'Lotus Residency' }}</span>
+                        <span class="font-body-sm text-[11px] text-on-surface-variant truncate">{{ $currentHotel ? $currentHotel->city : 'Bengaluru' }} · {{ $currentKeys }} Keys</span>
                     </div>
-                    <span class="material-symbols-outlined text-secondary text-base shrink-0">unfold_more</span>
+                    <span class="material-symbols-outlined text-secondary text-base shrink-0 transition-transform duration-200 group-hover:text-primary" id="hotelDropdownArrow">unfold_more</span>
+                </button>
+
+                <!-- Dropdown Menu -->
+                <div id="hotelDropdownMenu" class="hidden absolute left-3 right-3 top-full mt-1.5 bg-surface border border-border rounded-xl shadow-xl z-50 py-1.5 overflow-hidden ring-1 ring-black/5">
+                    <div class="px-3 py-1.5 bg-surface-container-low border-b border-border flex items-center justify-between">
+                        <span class="text-[10px] uppercase font-bold text-secondary tracking-wider">Switch Property</span>
+                        <span class="text-[10px] text-secondary font-medium">{{ $hotelsList->count() }} Available</span>
+                    </div>
+                    <div class="max-h-60 overflow-y-auto divide-y divide-border/50">
+                        @foreach($hotelsList as $h)
+                            @php
+                                $hKeys = $h->roomTypes->sum('total_rooms') ?: ($h->code === 'MYSORE01' ? 12 : ($h->code === 'MALABAR01' ? 20 : 18));
+                                $isActive = $currentHotel && $currentHotel->id === $h->id;
+                            @endphp
+                            <a href="{{ route('hotels.switch', ['id' => $h->id]) }}"
+                               class="flex items-center justify-between px-3 py-2.5 text-xs hover:bg-surface-container-high transition-colors {{ $isActive ? 'bg-nav-active-bg font-semibold text-primary' : 'text-on-surface' }}">
+                                <div class="flex flex-col min-w-0 pr-2">
+                                    <div class="flex items-center gap-1.5">
+                                        <span class="font-medium truncate">{{ $h->name }}</span>
+                                        @if($isActive)
+                                            <span class="px-1.5 py-0.2 rounded bg-tertiary-container/10 text-tertiary-container text-[9px] font-bold uppercase">Active</span>
+                                        @endif
+                                    </div>
+                                    <span class="text-[10px] text-secondary mt-0.5">{{ $h->city }} · {{ $hKeys }} Keys · <span class="font-data-mono">{{ $h->code }}</span></span>
+                                </div>
+                                @if($isActive)
+                                    <span class="material-symbols-outlined text-tertiary-container text-base shrink-0">check_circle</span>
+                                @endif
+                            </a>
+                        @endforeach
+                    </div>
                 </div>
             </div>
 
@@ -224,9 +281,9 @@
     </aside>
 
     <!-- Main Container -->
-    <div class="pl-60 min-h-screen flex flex-col bg-background">
+    <div class="ml-60 ml-[240px] min-h-screen flex flex-col bg-background" style="margin-left: 240px;">
         <!-- Top Utility Header -->
-        <header class="fixed top-0 left-60 right-0 h-16 bg-surface/90 backdrop-blur-md border-b border-border z-40 px-8 flex items-center justify-between">
+        <header class="fixed top-0 left-60 left-[240px] right-0 h-16 bg-surface/90 backdrop-blur-md border-b border-border z-40 px-8 flex items-center justify-between" style="left: 240px;">
             <div class="flex items-center gap-4">
                 <div class="flex items-center gap-1.5 text-xs text-secondary font-label-md">
                     <span class="font-semibold text-primary">Lotus Residency</span>
@@ -245,23 +302,18 @@
                     <span class="material-symbols-outlined absolute left-2.5 top-1/2 -translate-y-1/2 text-secondary text-base">search</span>
                     <input class="h-8 pl-8 pr-3 bg-surface-container-low border border-border rounded text-xs text-on-surface placeholder:text-secondary focus:outline-none focus:border-tertiary-container w-64 lg:w-72" placeholder="Search reservation, room, guest..." type="text">
                 </div>
-                <button class="h-8 w-8 flex items-center justify-center rounded border border-border bg-surface text-secondary hover:text-on-surface hover:bg-surface-container-low transition-colors" title="Operational Help">
-                    <span class="material-symbols-outlined text-base">help_outline</span>
-                </button>
                 <a href="{{ route('alerts') }}" class="relative h-8 w-8 flex items-center justify-center rounded border border-border bg-surface text-secondary hover:text-on-surface hover:bg-surface-container-low transition-colors" title="Notifications">
                     <span class="material-symbols-outlined text-base">notifications</span>
                     @if($openAlertsCount > 0)
                         <span class="absolute top-1 right-1 w-2 h-2 rounded-full bg-danger"></span>
                     @endif
                 </a>
-                <div class="flex items-center pl-1">
-                    <div class="w-7 h-7 rounded-full bg-surface-container border border-border flex items-center justify-center text-primary font-semibold text-xs">SR</div>
-                </div>
+                <div class="flex items-center pl-1"></div>
             </div>
         </header>
 
         <!-- Flash messages -->
-        <main class="w-full pt-16 px-8 pb-12 flex-1 bg-background">
+        <main class="w-full pt-20 px-8 pb-12 flex-1 bg-background">
             @if(session('success'))
                 <div class="my-4 p-3 bg-success-soft border border-[#4C7168]/30 rounded text-xs text-[#113730] flex items-center gap-2">
                     <span class="material-symbols-outlined text-sm text-[#4C7168]">check_circle</span>

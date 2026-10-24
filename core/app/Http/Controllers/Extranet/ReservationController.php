@@ -29,7 +29,7 @@ class ReservationController extends Controller
 {
     public function index(Request $request): View
     {
-        $hotel = Hotel::first();
+        $hotel = $this->getActiveHotel() ?? Hotel::first();
         $tab = $request->query('tab', 'all'); // all, confirmed, oversold, failed, cancelled
         $search = $request->query('search');
         $channelId = $request->query('channel_id');

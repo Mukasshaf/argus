@@ -12,7 +12,7 @@ use Illuminate\Support\Facades\DB;
 
 class DispatchSync extends Command
 {
-    protected $signature = 'staybridge:dispatch-sync';
+    protected $signature = 'argus:dispatch-sync';
     protected $description = 'Dispatches SyncChannelJob for channels with dirty rows or due for half-open check';
 
     public function handle(): int

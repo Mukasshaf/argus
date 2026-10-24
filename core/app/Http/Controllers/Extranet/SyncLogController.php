@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Extranet;
 
+use App\Enums\ChannelStatus;
 use App\Enums\SyncOutcome;
 use App\Http\Controllers\Controller;
 use App\Models\Channel;
+use App\Models\ChannelSyncState;
 use App\Models\Hotel;
 use App\Models\SyncLog;
 use App\Services\SyncKick;
@@ -20,7 +22,7 @@ class SyncLogController extends Controller
 {
     public function index(Request $request): View
     {
-        $hotel = Hotel::first();
+        $hotel = $this->getActiveHotel() ?? Hotel::first();
         $channelId = $request->query('channel_id');
         $outcome = $request->query('outcome');
         $direction = $request->query('direction');
@@ -60,7 +62,7 @@ class SyncLogController extends Controller
         $okLogs = SyncLog::where('outcome', SyncOutcome::Ok)->count();
         $failLogs = SyncLog::whereIn('outcome', [SyncOutcome::TransientFail, SyncOutcome::PermanentFail])->count();
         $successRate = $totalLogs > 0 ? round(($okLogs / $totalLogs) * 100, 1) : 100.0;
-        $avgDuration = round(SyncLog::avg('duration_ms') ?? 0);
+        $avgDuration = round((float) (SyncLog::avg('duration_ms') ?? 0));
 
         // Tab counts
         $tabCounts = [
@@ -92,9 +94,20 @@ class SyncLogController extends Controller
 
     public function triggerCheck(): RedirectResponse
     {
+        Channel::query()->update([
+            'consecutive_failures' => 0,
+            'circuit_open_until' => null,
+            'status' => ChannelStatus::Active,
+        ]);
+        ChannelSyncState::whereNotNull('blocked_at')->update([
+            'blocked_at' => null,
+            'attempts' => 0,
+            'last_error' => null,
+            'updated_at' => now(),
+        ]);
         SyncKick::allChannels();
 
-        return back()->with('success', 'Triggered live synchronization check across all active channel adapters.');
+        return back()->with('success', 'Reset circuits and triggered live synchronization check across all active channel adapters.');
     }
 
     public function exportCsv(): StreamedResponse

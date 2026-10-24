@@ -120,9 +120,12 @@ class RaahiAdapter implements ChannelAdapter
         }
 
         $doc = new DOMDocument();
-        $previousEntityLoader = libxml_disable_entity_loader(true);
+        // libxml_disable_entity_loader() is deprecated since PHP 8.0 and is a
+        // no-op on libxml 2.9+, where external entity loading is off by
+        // default. The DOCTYPE/ENTITY rejection above plus LIBXML_NONET is
+        // what actually keeps external entities from being resolved, so the
+        // loader toggle is not needed any more.
         $loaded = @$doc->loadXML($rawBody, LIBXML_NONET);
-        libxml_disable_entity_loader($previousEntityLoader);
 
         if (!$loaded) {
             throw new PermanentChannelException('Malformed XML received from Raahi.');
@@ -227,6 +230,9 @@ class RaahiAdapter implements ChannelAdapter
         string $operation
     ): void {
         $baseUrl = rtrim((string) ($channel->base_url ?: config('services.sim.base_url')), '/');
+        if (str_ends_with($baseUrl, '/raahi') && str_starts_with($endpoint, '/raahi')) {
+            $endpoint = substr($endpoint, 6);
+        }
         $url = $baseUrl . $endpoint;
         $creds = $channel->credentials ?? [];
         $apiKey = $creds['api_key'] ?? 'raahi_default_key';
@@ -300,7 +306,7 @@ class RaahiAdapter implements ChannelAdapter
                 'duration_ms' => $durationMs,
                 'attempt' => 1,
                 'outcome' => $outcome,
-                'error' => $errorMsg,
+                'error' => $errorMsg ? substr($errorMsg, 0, 65535) : null,
                 'created_at' => now(),
             ]);
         }

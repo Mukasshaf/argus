@@ -33,9 +33,9 @@ class DatabaseSeeder extends Seeder
 
         // Also seed default admin
         User::firstOrCreate(
-            ['email' => 'admin@staybridge.local'],
+            ['email' => 'admin@argus.local'],
             [
-                'name' => 'StayBridge Admin',
+                'name' => 'Argus Admin',
                 'password' => Hash::make('secret'),
                 'email_verified_at' => now(),
             ]
@@ -87,6 +87,51 @@ class DatabaseSeeder extends Seeder
             );
             $savedRatePlans[$rp['room_type']->code . '_' . $rp['code']] = $saved;
         }
+
+        // Additional properties for multi-hotel selector
+        $hotelMysore = Hotel::firstOrCreate(
+            ['code' => 'MYSORE01'],
+            [
+                'name' => 'Mysore Palace View',
+                'city' => 'Mysuru',
+                'timezone' => 'Asia/Kolkata',
+                'currency' => 'INR',
+            ]
+        );
+        $stdMysore = RoomType::firstOrCreate(
+            ['hotel_id' => $hotelMysore->id, 'code' => 'STD'],
+            ['name' => 'Classic Heritage Room', 'total_rooms' => 8]
+        );
+        $dlxMysore = RoomType::firstOrCreate(
+            ['hotel_id' => $hotelMysore->id, 'code' => 'DLX'],
+            ['name' => 'Royal Palace View', 'total_rooms' => 4]
+        );
+        $mysStdEp = RatePlan::firstOrCreate(['room_type_id' => $stdMysore->id, 'code' => 'EP'], ['name' => 'EP Room Only', 'base_price' => 3200]);
+        $mysStdCp = RatePlan::firstOrCreate(['room_type_id' => $stdMysore->id, 'code' => 'CP'], ['name' => 'CP Breakfast Inc.', 'base_price' => 3700]);
+        $mysDlxEp = RatePlan::firstOrCreate(['room_type_id' => $dlxMysore->id, 'code' => 'EP'], ['name' => 'EP Royal', 'base_price' => 4800]);
+        $mysDlxCp = RatePlan::firstOrCreate(['room_type_id' => $dlxMysore->id, 'code' => 'CP'], ['name' => 'CP Royal Breakfast', 'base_price' => 5400]);
+
+        $hotelMalabar = Hotel::firstOrCreate(
+            ['code' => 'MALABAR01'],
+            [
+                'name' => 'Malabar Heritage Resort',
+                'city' => 'Kochi',
+                'timezone' => 'Asia/Kolkata',
+                'currency' => 'INR',
+            ]
+        );
+        $dlxMalabar = RoomType::firstOrCreate(
+            ['hotel_id' => $hotelMalabar->id, 'code' => 'DLX'],
+            ['name' => 'Backwater Deluxe', 'total_rooms' => 14]
+        );
+        $steMalabar = RoomType::firstOrCreate(
+            ['hotel_id' => $hotelMalabar->id, 'code' => 'STE'],
+            ['name' => 'Waterfront Villa', 'total_rooms' => 6]
+        );
+        $malDlxEp = RatePlan::firstOrCreate(['room_type_id' => $dlxMalabar->id, 'code' => 'EP'], ['name' => 'EP Rate', 'base_price' => 6000]);
+        $malDlxCp = RatePlan::firstOrCreate(['room_type_id' => $dlxMalabar->id, 'code' => 'CP'], ['name' => 'CP Rate', 'base_price' => 6800]);
+        $malSteEp = RatePlan::firstOrCreate(['room_type_id' => $steMalabar->id, 'code' => 'EP'], ['name' => 'EP Villa', 'base_price' => 11000]);
+        $malSteCp = RatePlan::firstOrCreate(['room_type_id' => $steMalabar->id, 'code' => 'CP'], ['name' => 'CP Villa', 'base_price' => 12500]);
 
         // 5. Channels:
         // raahi (XML, markup 1000 bps)
@@ -143,27 +188,53 @@ class DatabaseSeeder extends Seeder
             ]
         );
 
-        // 6. External codes: rooms STD, DLX, STE; rates EP, CP on every channel
+        // 6. External codes for all properties (unique per channel):
         $allChannels = [$raahi, $sarai, $mela];
-        $allRooms = [$std, $dlx, $ste];
+
+        $roomMappings = [
+            ['room' => $std, 'code' => 'STD'],
+            ['room' => $dlx, 'code' => 'DLX'],
+            ['room' => $ste, 'code' => 'STE'],
+            ['room' => $stdMysore, 'code' => 'MYS_STD'],
+            ['room' => $dlxMysore, 'code' => 'MYS_DLX'],
+            ['room' => $dlxMalabar, 'code' => 'MAL_DLX'],
+            ['room' => $steMalabar, 'code' => 'MAL_STE'],
+        ];
+
+        $rateMappings = [
+            ['plan' => $savedRatePlans['STD_EP'], 'code' => 'EP'],
+            ['plan' => $savedRatePlans['STD_CP'], 'code' => 'CP'],
+            ['plan' => $savedRatePlans['DLX_EP'], 'code' => 'DLX_EP'],
+            ['plan' => $savedRatePlans['DLX_CP'], 'code' => 'DLX_CP'],
+            ['plan' => $savedRatePlans['STE_EP'], 'code' => 'STE_EP'],
+            ['plan' => $savedRatePlans['STE_CP'], 'code' => 'STE_CP'],
+            ['plan' => $mysStdEp, 'code' => 'MYS_STD_EP'],
+            ['plan' => $mysStdCp, 'code' => 'MYS_STD_CP'],
+            ['plan' => $mysDlxEp, 'code' => 'MYS_DLX_EP'],
+            ['plan' => $mysDlxCp, 'code' => 'MYS_DLX_CP'],
+            ['plan' => $malDlxEp, 'code' => 'MAL_DLX_EP'],
+            ['plan' => $malDlxCp, 'code' => 'MAL_DLX_CP'],
+            ['plan' => $malSteEp, 'code' => 'MAL_STE_EP'],
+            ['plan' => $malSteCp, 'code' => 'MAL_STE_CP'],
+        ];
 
         foreach ($allChannels as $ch) {
-            foreach ($allRooms as $rm) {
+            foreach ($roomMappings as $rm) {
                 ChannelRoomMapping::firstOrCreate(
-                    ['channel_id' => $ch->id, 'room_type_id' => $rm->id],
-                    ['external_room_code' => $rm->code]
+                    ['channel_id' => $ch->id, 'room_type_id' => $rm['room']->id],
+                    ['external_room_code' => $rm['code']]
                 );
             }
 
-            foreach ($savedRatePlans as $key => $plan) {
-                ChannelRateMapping::updateOrCreate(
-                    ['channel_id' => $ch->id, 'external_rate_code' => $plan->code],
-                    ['rate_plan_id' => $plan->id]
+            foreach ($rateMappings as $rm) {
+                ChannelRateMapping::firstOrCreate(
+                    ['channel_id' => $ch->id, 'rate_plan_id' => $rm['plan']->id],
+                    ['external_rate_code' => $rm['code']]
                 );
             }
         }
 
         // 7. Pre-extend inventory for initial 30 days
-        Artisan::call('staybridge:extend-inventory', ['--days' => 30]);
+        Artisan::call('argus:extend-inventory', ['--days' => 30]);
     }
 }

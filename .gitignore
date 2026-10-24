@@ -1,0 +1,29 @@
+# Local environment
+.env
+.env.local
+.env.*.local
+
+# Secrets and credentials
+*.pem
+*.key
+!docker/nginx.conf
+
+# Dependencies
+/vendor/
+/node_modules/
+
+# Runtime artifacts
+*.log
+*.sqlite
+*.sqlite-journal
+*.sqlite-wal
+*.sqlite-shm
+/storage/logs/*.log
+
+# Editor / OS
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+architecture.excalidraw

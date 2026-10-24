@@ -16,7 +16,7 @@ use Throwable;
 
 class VerifySync extends Command
 {
-    protected $signature = 'staybridge:verify-sync';
+    protected $signature = 'argus:verify-sync';
     protected $description = 'Verifies sync convergence against simulator state';
 
     public function handle(): int

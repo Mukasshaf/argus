@@ -35,7 +35,7 @@ class CalendarController extends Controller
 
     public function index(Request $request): View
     {
-        $hotel = Hotel::first();
+        $hotel = $this->getActiveHotel() ?? Hotel::first();
         $timezone = $hotel ? $hotel->timezone : 'Asia/Kolkata';
         $today = now()->timezone($timezone)->startOfDay();
 
@@ -51,7 +51,7 @@ class CalendarController extends Controller
 
         $dateStrings = array_map(fn($d) => $d->toDateString(), $dates);
 
-        $roomTypes = RoomType::with(['ratePlans'])->get();
+        $roomTypes = $hotel ? $hotel->roomTypes()->with(['ratePlans'])->get() : RoomType::with(['ratePlans'])->get();
 
         // Load inventory matrix [room_type_id][stay_date] => RoomInventory
         $inventoryRecords = RoomInventory::whereIn('room_type_id', $roomTypes->pluck('id'))
@@ -214,7 +214,7 @@ class CalendarController extends Controller
 
     public function syncStatus(Request $request): JsonResponse
     {
-        $hotel = Hotel::first();
+        $hotel = $this->getActiveHotel() ?? Hotel::first();
         $timezone = $hotel ? $hotel->timezone : 'Asia/Kolkata';
         $today = now()->timezone($timezone)->toDateString();
 

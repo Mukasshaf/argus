@@ -166,12 +166,13 @@ class SaraiAdapter implements ChannelAdapter
         }
 
         $baseUrl = rtrim((string) ($c->base_url ?: config('services.sim.base_url')), '/');
+        $oauthPath = str_ends_with($baseUrl, '/sarai') ? '/oauth/token' : '/sarai/oauth/token';
         $creds = $c->credentials ?? [];
         $clientId = $creds['client_id'] ?? 'sarai_client';
         $clientSecret = $creds['client_secret'] ?? 'sarai_secret';
 
         try {
-            $res = Http::timeout(5)->asForm()->post($baseUrl . '/sarai/oauth/token', [
+            $res = Http::timeout(5)->asForm()->post($baseUrl . $oauthPath, [
                 'grant_type' => 'client_credentials',
                 'client_id' => $clientId,
                 'client_secret' => $clientSecret,
@@ -201,6 +202,9 @@ class SaraiAdapter implements ChannelAdapter
         string $operation
     ): array {
         $baseUrl = rtrim((string) ($channel->base_url ?: config('services.sim.base_url')), '/');
+        if (str_ends_with($baseUrl, '/sarai') && str_starts_with($endpoint, '/sarai')) {
+            $endpoint = substr($endpoint, 6);
+        }
         $url = $baseUrl . $endpoint;
 
         $token = $this->getOAuthToken($channel);
@@ -294,7 +298,7 @@ class SaraiAdapter implements ChannelAdapter
                 'duration_ms' => $durationMs,
                 'attempt' => 1,
                 'outcome' => $outcome,
-                'error' => $errorMsg,
+                'error' => $errorMsg ? substr($errorMsg, 0, 65535) : null,
                 'created_at' => now(),
             ]);
         }

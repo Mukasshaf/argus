@@ -10,7 +10,7 @@ jobs:
         image: mysql:8.0
         env:
           MYSQL_ROOT_PASSWORD: root
-          MYSQL_DATABASE: staybridge_test
+          MYSQL_DATABASE: argus_test
         ports:
           - 3306:3306
         options: >-

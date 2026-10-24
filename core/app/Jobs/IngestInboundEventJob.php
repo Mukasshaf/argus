@@ -26,7 +26,7 @@ class IngestInboundEventJob implements ShouldQueue
 
     public function __construct(public int $inboundEventId)
     {
-        $this->onQueue('staybridge_ingest');
+        $this->onQueue('argus_ingest');
     }
 
     public function handle(

@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-echo "==> Deploying StayBridge Channel Manager..."
+echo "==> Deploying Argus Channel Manager..."
 
 if command -v aws >/dev/null 2>&1; then
   echo "==> Fetching parameters from AWS SSM Parameter Store..."
   AWS_REGION="${AWS_DEFAULT_REGION:-ap-south-1}"
-  APP_KEY=$(aws ssm get-parameter --name "/staybridge/APP_KEY" --with-decryption --query "Parameter.Value" --output text --region "$AWS_REGION" 2>/dev/null || echo "")
-  DB_PASSWORD=$(aws ssm get-parameter --name "/staybridge/DB_PASSWORD" --with-decryption --query "Parameter.Value" --output text --region "$AWS_REGION" 2>/dev/null || echo "")
+  APP_KEY=$(aws ssm get-parameter --name "/argus/APP_KEY" --with-decryption --query "Parameter.Value" --output text --region "$AWS_REGION" 2>/dev/null || echo "")
+  DB_PASSWORD=$(aws ssm get-parameter --name "/argus/DB_PASSWORD" --with-decryption --query "Parameter.Value" --output text --region "$AWS_REGION" 2>/dev/null || echo "")
 fi
 
 git pull origin main || true

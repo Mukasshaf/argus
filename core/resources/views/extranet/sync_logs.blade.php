@@ -17,7 +17,7 @@
             </span>
         </div>
 
-        <div class="flex items-center gap-2.5">
+        <div class="flex items-center gap-2.5 pt-3 mt-2">
             <form action="{{ route('sync-logs.trigger-check') }}" method="POST">
                 @csrf
                 <button type="submit" class="h-9 px-3.5 bg-surface border border-border text-primary font-medium text-xs rounded-lg hover:bg-surface-container transition-colors flex items-center gap-1.5 shadow-sm">
@@ -154,13 +154,12 @@
                 </div>
 
                 <div class="relative">
-                    <select name="channel_id" onchange="this.form.submit()" class="h-8 pl-3 pr-7 bg-surface-container-low text-xs text-primary rounded border border-border appearance-none cursor-pointer">
+                    <select name="channel_id" onchange="this.form.submit()" class="h-8 pl-3 pr-7 bg-surface-container-low text-xs text-primary rounded border border-border cursor-pointer">
                         <option value="">All Channels</option>
                         @foreach($channels as $ch)
                             <option value="{{ $ch->id }}" {{ $channelId == $ch->id ? 'selected' : '' }}>{{ $ch->name }}</option>
                         @endforeach
                     </select>
-                    <span class="material-symbols-outlined absolute right-1.5 top-1/2 -translate-y-1/2 text-secondary text-xs pointer-events-none">expand_more</span>
                 </div>
 
                 <div class="relative">
@@ -170,7 +169,6 @@
                         <option value="transient_fail" {{ $outcome === 'transient_fail' ? 'selected' : '' }}>Transient Fail</option>
                         <option value="permanent_fail" {{ $outcome === 'permanent_fail' ? 'selected' : '' }}>Permanent Fail</option>
                     </select>
-                    <span class="material-symbols-outlined absolute right-1.5 top-1/2 -translate-y-1/2 text-secondary text-xs pointer-events-none">expand_more</span>
                 </div>
 
                 <div class="relative">
@@ -179,7 +177,6 @@
                         <option value="out" {{ $direction === 'out' ? 'selected' : '' }}>Outbound (Push)</option>
                         <option value="in" {{ $direction === 'in' ? 'selected' : '' }}>Inbound (Webhook/Poll)</option>
                     </select>
-                    <span class="material-symbols-outlined absolute right-1.5 top-1/2 -translate-y-1/2 text-secondary text-xs pointer-events-none">expand_more</span>
                 </div>
 
                 @if($channelId || $outcome || $direction || $correlationId)
