@@ -37,6 +37,8 @@ services:
     networks:
       - argus_net
 
+
+
   mysql:
     image: mysql:8.0
     container_name: argus_mysql
